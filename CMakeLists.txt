@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 4.0)
-project(untitled1 C)
+project(ESPresso C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(untitled1 main.c
-        lexer.h)
+add_executable(ESPresso main.c
+        lexer.h
+        lexer.c)
