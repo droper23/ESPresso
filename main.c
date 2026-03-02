@@ -1,10 +1,22 @@
 #include "lexer.h"
 #include <stdio.h>
+#include <stdlib.h>
 
-int main(void) {
-    const char* source = "print 5 + 3";
-    const char* current = source;
+int main() {
+    const char* source = "a == b != c >= 5 < 10";
+    Lexer lexer;
+    lexer.current = source;
 
-    Token t = getNextToken(current);
-    printf("Token type: %d, lexeme: %s\n", t.type, t.lexeme);
+    Token t;
+    do {
+        t = getNextToken(&lexer);
+        printf("Token type: %s, lexeme: '%s'\n", tokenTypeToString(t.type), t.lexeme);
+
+        if (t.type == TOKEN_NUMBER || t.type == TOKEN_IDENTIFIER) {
+            free(t.lexeme);
+        }
+
+    } while (t.type != TOKEN_EOF);
+
+    return 0;
 }
