@@ -27,7 +27,6 @@ Token getNextToken(Lexer* lexer) {
         Token t;
         t.type = TOKEN_EOF;
         t.lexeme = "";
-
         return t;
     }
 

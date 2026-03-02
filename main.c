@@ -1,22 +1,46 @@
 #include "lexer.h"
+#include "parser.h"
 #include <stdio.h>
-#include <stdlib.h>
+#include "ast_utils.h"
 
-int main() {
-    const char* source = "if a == b != while {} c >= 5 < 10";
+void printNode(ASTNode* node, int depth) {
+    if (!node) return;
+
+    for (int i = 0; i < depth; i++) {
+        printf("  ");
+    }
+
+    printf("%s", nodeTypeToString(node->type));
+
+    switch(node->type) {
+        case NODE_NUMBER:
+            printf(" %d", node->value);
+            break;
+        case NODE_IDENTIFIER:
+            printf(" %s", node->name);
+            break;
+        case NODE_BINARY_OP:
+            printf(" '%c'", node->op);
+            break;
+        default:
+            break;
+    }
+    printf("\n");
+
+    printNode(node->left, depth + 1);
+    printNode(node->right, depth + 1);
+}
+
+int main(void) {
+    const char* source = "print 17 + (9 - 3)";
     Lexer lexer;
     lexer.current = source;
+    lexer.start = source;
 
-    Token t;
-    do {
-        t = getNextToken(&lexer);
-        printf("Token type: %s, lexeme: '%s'\n", tokenTypeToString(t.type), t.lexeme);
+    Parser parser;
+    initParser(&parser, &lexer);
 
-        if (t.type == TOKEN_NUMBER || t.type == TOKEN_IDENTIFIER) {
-            free(t.lexeme);
-        }
+    ASTNode* root = parseStatement(&parser);
 
-    } while (t.type != TOKEN_EOF);
-
-    return 0;
+    printNode(root, 0);
 }
