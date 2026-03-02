@@ -1,4 +1,4 @@
-//
+// lexer.c
 // Created by Derek Roper on 3/1/26.
 //
 #include "lexer.h"
@@ -55,13 +55,13 @@ Token getNextToken(Lexer* lexer) {
 
         if (strcmp(text, "print") == 0) {
             t.type = TOKEN_PRINT;
-            t.lexeme = "print";
+            t.lexeme = strdup(text);
         } else if (strcmp(text, "if") == 0) {
             t.type = TOKEN_IF;
-            t.lexeme = "if";
+            t.lexeme = strdup(text);
         } else if (strcmp(text, "while") == 0) {
             t.type = TOKEN_WHILE;
-            t.lexeme = "while";
+            t.lexeme = strdup(text);
         } else {
             t.type = TOKEN_IDENTIFIER;
             t.lexeme = text;
@@ -164,11 +164,19 @@ Token getNextToken(Lexer* lexer) {
                 t.lexeme = "}";
                 break;
 
-            default:
+            default: {
+                Token t;
                 t.type = TOKEN_UNKNOWN;
-                t.lexeme = "";
-                lexer->current++;
-                break;
+
+                if (*lexer->current != '\0') {
+                    t.lexeme = strndup(lexer->current, 1);
+                    lexer->current++;
+                } else {
+                    t.lexeme = strdup("<empty>");
+                }
+
+                return t;
+            }
         }
 
         return t;

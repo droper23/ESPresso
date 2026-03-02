@@ -1,3 +1,5 @@
+// ast.h
+
 #ifndef AST_H
 #define AST_H
 
@@ -18,6 +20,7 @@ typedef struct ASTNode {
     int value;
     char* name;
     char op;
+    TokenType tokenType;
 } ASTNode;
 
 #endif

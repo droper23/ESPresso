@@ -1,3 +1,5 @@
+// main.c
+
 #include "lexer.h"
 #include "parser.h"
 #include <stdio.h>
@@ -22,6 +24,8 @@ void printNode(ASTNode* node, int depth) {
         case NODE_BINARY_OP:
             printf(" '%c'", node->op);
             break;
+        case NODE_UNKNOWN:
+            printf(" '%s'", node->name); break;
         default:
             break;
     }
@@ -32,7 +36,7 @@ void printNode(ASTNode* node, int depth) {
 }
 
 int main(void) {
-    const char* source = "print 17 + (9 - 3)";
+    const char* source = "print 17 + ? (9 - 3)";
     Lexer lexer;
     lexer.current = source;
     lexer.start = source;

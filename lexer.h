@@ -1,4 +1,4 @@
-//
+// lexer.h
 // Created by Derek Roper on 3/1/26.
 //
 

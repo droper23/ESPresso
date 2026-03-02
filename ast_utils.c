@@ -1,4 +1,4 @@
-//
+// ast_utils.c
 // Created by Derek Roper on 3/2/26.
 //
 
@@ -10,6 +10,7 @@ const char* nodeTypeToString(NodeType type) {
         case NODE_BINARY_OP:    return "BINARY_OP";
         case NODE_PRINT:        return "PRINT";
         case NODE_IDENTIFIER:   return "IDENTIFIER";
-        default:                return "UNKNOWN";
+        case NODE_UNKNOWN:      return "UNKNOWN";
+        default:                return "OTHER";
     }
 }
