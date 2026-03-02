@@ -26,12 +26,19 @@ ASTNode* makeNode(NodeType type) {
 
 ASTNode* makeUnknownNode(Parser* parser) {
     ASTNode* node = makeNode(NODE_UNKNOWN);
+
     if (parser->current.lexeme && parser->current.lexeme[0] != '\0') {
         node->name = strdup(parser->current.lexeme);
     } else {
-        node->name = strdup("<empty>");
+        node->name = strdup("");
     }
+
     advance(parser);
+
+    while (parser->current.type == TOKEN_UNKNOWN) {
+        advance(parser);
+    }
+
     return node;
 }
 
@@ -127,9 +134,30 @@ ASTNode* parseFactor(Parser* parser) {
     }
     else if (parser->current.type == TOKEN_EOF) {
         return NULL;
-    }
-    else {
+    } else {
         printf("Warning: unexpected token '%s'\n", parser->current.lexeme);
-        return makeUnknownNode(parser);
+
+        ASTNode* unknown = makeUnknownNode(parser);
+
+        if (parser->current.type == TOKEN_OPEN_PARENTHESIS) {
+            advance(parser);
+
+            ASTNode* inner = parseExpression(parser);
+
+            if (parser->current.type != TOKEN_CLOSE_PARENTHESIS) {
+                printf("Error: expected ')', found '%s'\n", parser->current.lexeme);
+                ASTNode* err = makeNode(NODE_UNKNOWN);
+                err->name = strdup("missing ')'");
+                err->left = inner;
+                unknown->left = err;
+                return unknown;
+            }
+
+            advance(parser);
+            unknown->left = inner;
+        }
+
+        return unknown;
     }
+
 }

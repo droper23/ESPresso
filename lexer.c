@@ -16,7 +16,7 @@ bool matchNext(Lexer* lexer, char expected) {
 }
 
 Token getNextToken(Lexer* lexer) {
-    while (*lexer->current == ' ' || *lexer->current == '\t' || *lexer->current == '\n') {
+    while (lexer->current && isspace(*lexer->current)) {
         lexer->current++;
     }
 
@@ -168,13 +168,11 @@ Token getNextToken(Lexer* lexer) {
                 Token t;
                 t.type = TOKEN_UNKNOWN;
 
-                if (*lexer->current != '\0') {
-                    t.lexeme = strndup(lexer->current, 1);
-                    lexer->current++;
-                } else {
-                    t.lexeme = strdup("<empty>");
-                }
+                char buf[2];
+                buf[0] = c;
+                buf[1] = '\0';
 
+                t.lexeme = strdup(buf);
                 return t;
             }
         }
