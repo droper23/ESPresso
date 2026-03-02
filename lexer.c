@@ -4,7 +4,6 @@
 #include "lexer.h"
 #include <string.h>
 #include <ctype.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 bool matchNext(Lexer* lexer, char expected) {
@@ -57,8 +56,13 @@ Token getNextToken(Lexer* lexer) {
 
         if (strcmp(text, "print") == 0) {
             t.type = TOKEN_PRINT;
-            t.lexeme = "print"; // use static string
-            free(text);
+            t.lexeme = "print";
+        } else if (strcmp(text, "if") == 0) {
+            t.type = TOKEN_IF;
+            t.lexeme = "if";
+        } else if (strcmp(text, "while") == 0) {
+            t.type = TOKEN_WHILE;
+            t.lexeme = "while";
         } else {
             t.type = TOKEN_IDENTIFIER;
             t.lexeme = text;
@@ -91,6 +95,26 @@ Token getNextToken(Lexer* lexer) {
                 }
                 break;
 
+            case '+':
+                if (matchNext(lexer, '=')) {
+                    t.type = TOKEN_PLUS_EQUAL;
+                    t.lexeme = "+=";
+                } else {
+                    t.type = TOKEN_PLUS;
+                    t.lexeme = "+";
+                }
+                break;
+
+            case '-':
+                if (matchNext(lexer, '=')) {
+                    t.type = TOKEN_MINUS_EQUAL;
+                    t.lexeme = "-=";
+                } else {
+                    t.type = TOKEN_MINUS;
+                    t.lexeme = "-";
+                }
+                break;
+
             case '>':
                 if (matchNext(lexer, '=')) {
                     t.type = TOKEN_GREATER_EQUAL;
@@ -111,16 +135,6 @@ Token getNextToken(Lexer* lexer) {
                 }
                 break;
 
-            case '+':
-                t.type = TOKEN_PLUS;
-                t.lexeme = "+";
-                break;
-
-            case '-':
-                t.type = TOKEN_MINUS;
-                t.lexeme = "-";
-                break;
-
             case '(':
                 t.type = TOKEN_OPEN_PARENTHESIS;
                 t.lexeme = "(";
@@ -133,22 +147,22 @@ Token getNextToken(Lexer* lexer) {
 
             case '[':
                 t.type = TOKEN_OPEN_BRACKETS;
-                t.lexeme = "(";
+                t.lexeme = "[";
                 break;
 
             case ']':
                 t.type = TOKEN_CLOSE_BRACKETS;
-                t.lexeme = ")";
+                t.lexeme = "]";
                 break;
 
             case '{':
                 t.type = TOKEN_OPEN_BRACES;
-                t.lexeme = "(";
+                t.lexeme = "{";
                 break;
 
             case '}':
                 t.type = TOKEN_CLOSE_BRACES;
-                t.lexeme = ")";
+                t.lexeme = "}";
                 break;
 
             default:

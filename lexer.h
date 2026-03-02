@@ -32,7 +32,9 @@
     X(TOKEN_CLOSE_BRACES) \
     X(TOKEN_COMMA) \
     X(TOKEN_PLUS_EQUAL) \
-    X(TOKEN_MINUS_EQUAL)
+    X(TOKEN_MINUS_EQUAL) \
+    X(TOKEN_IF) \
+    X(TOKEN_WHILE)
 
 typedef enum {
 #define X(name) name,

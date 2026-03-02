@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 int main() {
-    const char* source = "a == b != c >= 5 < 10";
+    const char* source = "if a == b != while {} c >= 5 < 10";
     Lexer lexer;
     lexer.current = source;
 
