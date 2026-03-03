@@ -4,6 +4,7 @@
 #include "parser.h"
 #include <stdio.h>
 #include "ast_utils.h"
+#include "env.h"
 
 void printNode(ASTNode* node, int depth) {
     if (!node) return;
@@ -36,7 +37,7 @@ void printNode(ASTNode* node, int depth) {
 }
 
 int main(void) {
-    const char* source = "print 17 + ? (9 - 3)";
+    const char* source = "x = 17 + (9 - 3)\nprint x";
     Lexer lexer;
     lexer.current = source;
     lexer.start = source;

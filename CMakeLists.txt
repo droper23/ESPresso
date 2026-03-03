@@ -10,4 +10,15 @@ add_executable(ESPresso main.c
         parser.h
         parser.c
         ast_utils.h
-        ast_utils.c)
+        ast_utils.c
+        eval.c
+        eval.h
+        env.c
+        env.h
+        test_env.c
+)
+
+add_executable(test_env
+        test_env.c
+        env.c
+)
