@@ -28,4 +28,6 @@ void env_set(Env* env, const char* name, int value);
 
 void free_environment(Env* env);
 
+static struct Variable* find_variable(Env* env, const char* name);
+
 #endif //ENV_H

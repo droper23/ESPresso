@@ -21,8 +21,7 @@ int evaluate(ASTNode* node, Env* env) {
         }
         case NODE_IDENTIFIER: {
             if (node->name) {
-                int value = env_get(env, node->name);
-                return value;
+                return env_get(env, node->name);
             } else {
                 return 0;
             }
@@ -40,28 +39,26 @@ int evaluate(ASTNode* node, Env* env) {
                     return 0;
             }
         }
-        case NODE_UNKNOWN: {
-            printf("Unknown token: %s\n", node->name);
-            return 0;
-        }
-        case NODE_BLOCK: {
-            Env* local = create_environment(env);
-
-            ASTNode* stmt = node->body;
-            int result = 0;
-
-            while (stmt != NULL) {
-                result = evaluate(stmt, local);
-                stmt = stmt->next;
-            }
-
-            free_environment(local);
-            return result;
-        }
         case NODE_ASSIGN: {
             int value = evaluate(node->right, env);
             env_set(env, node->left->name, value);
             return value;
+        }
+        case NODE_BLOCK: {
+            // Keep the same environment for assignments, but you can still make a local child if you want isolation
+            ASTNode* stmt = node->body;
+            int result = 0;
+
+            while (stmt != NULL) {
+                result = evaluate(stmt, env);  // <-- use current env, not new child
+                stmt = stmt->next;
+            }
+
+            return result;
+        }
+        case NODE_UNKNOWN: {
+            printf("Unknown token: %s\n", node->name);
+            return 0;
         }
 
         default:

@@ -3,8 +3,22 @@
 //
 
 #include "env.h"
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static struct Variable* find_variable(Env* env, const char* name) {
+    for (int i = 0; i < env->count; i++) {
+        if (strcmp(env->variables[i].name, name) == 0) {
+            return &env->variables[i];
+        }
+    }
+    if (env->parent != NULL) {
+        return find_variable(env->parent, name);
+    }
+    return NULL;
+}
 
 Env* create_environment(Env* parent) {
     Env* env = malloc(sizeof(Env));
@@ -18,29 +32,26 @@ Env* create_environment(Env* parent) {
 }
 
 int env_get(Env* env, const char* name) {
-    for (int i = 0; i < env->count; i++) {
-        if (strcmp(env->variables[i].name, name) == 0) {
-            return env->variables[i].value;
-        }
-    }
-    if (env->parent != NULL) {
-        return env_get(env->parent, name);
-    } else {
-        return 0;
-    }
+    struct Variable* var = find_variable(env, name);
+    return var ? var->value : 0;
 }
 
 void env_set(Env* env, const char* name, int value) {
-    for (int i = 0; i < env->count; i++) {
-        if (strcmp(env->variables[i].name, name) == 0) {
-            env->variables[i].value = value;
-            return;
-        }
+    struct Variable* var = find_variable(env, name);
+
+    if (var != NULL) {
+        // Variable exists somewhere — update it
+        var->value = value;
+        return;
     }
+
+    // Variable doesn't exist — create it in current environment
     if (env->count < MAX_VARS) {
         env->variables[env->count].name = strdup(name);
         env->variables[env->count].value = value;
         env->count++;
+    } else {
+        printf("Error: environment is full, cannot add '%s'\n", name);
     }
 }
 
