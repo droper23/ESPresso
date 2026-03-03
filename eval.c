@@ -59,6 +59,12 @@ int evaluate(ASTNode* node, Env* env) {
             return 0;
         }
 
+        case NODE_PRINT: {
+            int value = evaluate(node->left, env);
+            printf("%d\n", value);
+            return value;
+        }
+
         default:
             printf("Unsupported node type: %d\n", node->type);
             return 0;
