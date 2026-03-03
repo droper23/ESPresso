@@ -21,6 +21,7 @@ ASTNode* makeNode(NodeType type) {
     node->value = 0;
     node->name = NULL;
     node->op = 0;
+    node->next = NULL;
     return node;
 }
 
@@ -47,17 +48,43 @@ ASTNode* parseTerm(Parser* parser);
 ASTNode* parseFactor(Parser* parser);
 
 ASTNode* parseStatement(Parser* parser) {
-    if (parser->current.type == TOKEN_PRINT) {
+    TokenType t = parser->current.type;
+
+    if (t == TOKEN_PRINT) {
         advance(parser);
-
-        ASTNode* expr = parseAdditive(parser);
-
+        ASTNode* expr = parseExpression(parser);
         ASTNode* node = makeNode(NODE_PRINT);
         node->left = expr;
         return node;
     }
 
-    printf("Error: expected 'print', found '%s'\n", parser->current.lexeme);
+    if (t == TOKEN_IDENTIFIER) {
+        ASTNode* node = parseAssignment(parser);
+        return node;
+    }
+
+    if (t == TOKEN_OPEN_BRACES) {
+        advance(parser);
+        ASTNode* block = makeNode(NODE_BLOCK);
+        ASTNode* last = NULL;
+
+        while (parser->current.type != TOKEN_CLOSE_BRACES && parser->current.type != TOKEN_EOF) {
+            ASTNode* stmt = parseStatement(parser);
+            if (!block->body) block->body = stmt;
+            else last->next = stmt;
+            last = stmt;
+        }
+
+        if (parser->current.type != TOKEN_CLOSE_BRACES) {
+            printf("Error: expected '}', found '%s'\n", parser->current.lexeme);
+        } else {
+            advance(parser);
+        }
+
+        return block;
+    }
+
+    printf("Error: unexpected token '%s'\n", parser->current.lexeme);
     return makeUnknownNode(parser);
 }
 

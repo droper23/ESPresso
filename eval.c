@@ -4,7 +4,6 @@
 
 #include "eval.h"
 #include "ast.h"
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -45,12 +44,11 @@ int evaluate(ASTNode* node, Env* env) {
             return value;
         }
         case NODE_BLOCK: {
-            // Keep the same environment for assignments, but you can still make a local child if you want isolation
             ASTNode* stmt = node->body;
             int result = 0;
 
             while (stmt != NULL) {
-                result = evaluate(stmt, env);  // <-- use current env, not new child
+                result = evaluate(stmt, env);
                 stmt = stmt->next;
             }
 

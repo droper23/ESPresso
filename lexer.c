@@ -1,10 +1,15 @@
 // lexer.c
 // Created by Derek Roper on 3/1/26.
 //
+
 #include "lexer.h"
 #include <string.h>
 #include <ctype.h>
-#include <stdlib.h>
+
+void initLexer(Lexer* lexer, const char* input) {
+    lexer->current = input;
+    lexer->start = input;
+}
 
 bool matchNext(Lexer* lexer, char expected) {
     if (*lexer->current != expected) {

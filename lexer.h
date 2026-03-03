@@ -47,7 +47,7 @@ typedef struct {
     const char* current;
 } Lexer;
 
-void initLexer(Lexer* lexer, const char* source);
+void initLexer(Lexer* lexer, const char* input);
 
 typedef struct Token {
     TokenType type;
