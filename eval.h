@@ -9,4 +9,6 @@
 
 int evaluate(ASTNode* node, Env* env);
 
+void freeAST(ASTNode* node);
+
 #endif //EVAL_H

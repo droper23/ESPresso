@@ -11,11 +11,14 @@ typedef struct {
     Token current;
 } Parser;
 
-void initParser(Parser* parser, Lexer* lexer);
-ASTNode* parseStatement(Parser* parser);
-ASTNode* parseExpression(Parser* parser);
-ASTNode* parseTerm(Parser* parser);
-
 void advance(Parser* parser);
+void initParser(Parser* parser, Lexer* lexer);
+ASTNode* makeNode(NodeType type);
+ASTNode* makeUnknownNode(Parser* parser);
+ASTNode* parseExpression(Parser* parser);
+ASTNode* parseAssignment(Parser* parser);
+ASTNode* parseStatement(Parser* parser);
+ASTNode* parseAdditive(Parser* parser);
+ASTNode* parseTerm(Parser* parser);
 
 #endif

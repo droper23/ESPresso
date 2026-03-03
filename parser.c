@@ -42,7 +42,7 @@ ASTNode* makeUnknownNode(Parser* parser) {
     return node;
 }
 
-ASTNode* parseExpression(Parser* parser);
+ASTNode* parseAdditive(Parser* parser);
 ASTNode* parseTerm(Parser* parser);
 ASTNode* parseFactor(Parser* parser);
 
@@ -50,7 +50,7 @@ ASTNode* parseStatement(Parser* parser) {
     if (parser->current.type == TOKEN_PRINT) {
         advance(parser);
 
-        ASTNode* expr = parseExpression(parser);
+        ASTNode* expr = parseAdditive(parser);
 
         ASTNode* node = makeNode(NODE_PRINT);
         node->left = expr;
@@ -61,8 +61,31 @@ ASTNode* parseStatement(Parser* parser) {
     return makeUnknownNode(parser);
 }
 
-
 ASTNode* parseExpression(Parser* parser) {
+    return parseAssignment(parser);
+}
+
+ASTNode* parseAssignment(Parser* parser)
+{
+    ASTNode* left = parseAdditive(parser);
+
+    if (parser->current.type == TOKEN_EQUAL) {
+        advance(parser);
+        if (left->type == NODE_IDENTIFIER) {
+            ASTNode* right = parseAssignment(parser);
+            ASTNode* node = makeNode(NODE_ASSIGN);
+            node->left = left;
+            node->right = right;
+            return node;
+        }
+        printf("Error: Invalid assignment target, found '%s'\n", parser->current.lexeme);
+        return makeUnknownNode(parser);
+    }
+
+    return left;
+}
+
+ASTNode* parseAdditive(Parser* parser) {
     ASTNode* left = parseTerm(parser);
 
     while (parser->current.type == TOKEN_PLUS || parser->current.type == TOKEN_MINUS) {
@@ -78,7 +101,6 @@ ASTNode* parseExpression(Parser* parser) {
 
         left = node;
     }
-
     return left;
 }
 
@@ -119,7 +141,7 @@ ASTNode* parseFactor(Parser* parser) {
     }
     else if (type == TOKEN_OPEN_PARENTHESIS) {
         advance(parser);
-        ASTNode* node = parseExpression(parser);
+        ASTNode* node = parseAssignment(parser);
 
         if (parser->current.type != TOKEN_CLOSE_PARENTHESIS) {
             printf("Error: expected ')', found '%s'\n", parser->current.lexeme);

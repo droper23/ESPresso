@@ -1,51 +1,47 @@
 // main.c
 
-#include "lexer.h"
-#include "parser.h"
 #include <stdio.h>
-#include "ast_utils.h"
 #include "env.h"
+#include "eval.h"
+#include "ast.h"
+#include <stdio.h>
+#include <_string.h>
 
-void printNode(ASTNode* node, int depth) {
-    if (!node) return;
+#include "parser.h"
 
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
-    }
+int main() {
+    Env* global = create_environment(NULL);
 
-    printf("%s", nodeTypeToString(node->type));
+    // simulate parsing: x = 5
+    ASTNode* assign_x = makeNode(NODE_ASSIGN);
+    assign_x->left = makeNode(NODE_IDENTIFIER);
+    assign_x->left->name = strdup("x");
+    assign_x->right = makeNode(NODE_NUMBER);
+    assign_x->right->value = 5;
 
-    switch(node->type) {
-        case NODE_NUMBER:
-            printf(" %d", node->value);
-            break;
-        case NODE_IDENTIFIER:
-            printf(" %s", node->name);
-            break;
-        case NODE_BINARY_OP:
-            printf(" '%c'", node->op);
-            break;
-        case NODE_UNKNOWN:
-            printf(" '%s'", node->name); break;
-        default:
-            break;
-    }
-    printf("\n");
+    int result = evaluate(assign_x, global);
+    printf("x = %d\n", env_get(global, "x"));  // should print 5
 
-    printNode(node->left, depth + 1);
-    printNode(node->right, depth + 1);
-}
+    // simulate: y = x + 3
+    ASTNode* add = makeNode(NODE_BINARY_OP);
+    add->left = makeNode(NODE_IDENTIFIER);
+    add->left->name = strdup("x");
+    add->right = makeNode(NODE_NUMBER);
+    add->right->value = 3;
+    add->op = '+';
 
-int main(void) {
-    const char* source = "x = 17 + (9 - 3)\nprint x";
-    Lexer lexer;
-    lexer.current = source;
-    lexer.start = source;
+    ASTNode* assign_y = makeNode(NODE_ASSIGN);
+    assign_y->left = makeNode(NODE_IDENTIFIER);
+    assign_y->left->name = strdup("y");
+    assign_y->right = add;
 
-    Parser parser;
-    initParser(&parser, &lexer);
+    result = evaluate(assign_y, global);
+    printf("y = %d\n", env_get(global, "y"));  // should print 8
 
-    ASTNode* root = parseStatement(&parser);
+    // free everything
+    freeAST(assign_x);
+    freeAST(assign_y);
+    free_environment(global);
 
-    printNode(root, 0);
+    return 0;
 }

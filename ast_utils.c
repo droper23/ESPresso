@@ -11,6 +11,7 @@ const char* nodeTypeToString(NodeType type) {
         case NODE_PRINT:        return "PRINT";
         case NODE_IDENTIFIER:   return "IDENTIFIER";
         case NODE_UNKNOWN:      return "UNKNOWN";
+        case NODE_BLOCK:        return "BLOCK";
         default:                return "OTHER";
     }
 }
