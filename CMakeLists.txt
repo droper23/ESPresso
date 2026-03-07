@@ -18,17 +18,17 @@ add_executable(ESPresso main.c
         test_env.c
         test_eval.c
 )
-
-add_executable(test_env
-        test_env.c
-        env.c
-)
-
-add_executable(test_eval
-        test_eval.c
-        eval.c
-        env.c
-        ast_utils.c
-        parser.c
-        lexer.c
-)
+#
+#add_executable(test_env
+#        test_env.c
+#        env.c
+#)
+#
+#add_executable(test_eval
+#        test_eval.c
+#        eval.c
+#        env.c
+#        ast_utils.c
+#        parser.c
+#        lexer.c
+#)

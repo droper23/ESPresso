@@ -6,6 +6,7 @@
 #include "ast.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "env.h"
 
@@ -18,6 +19,12 @@ int evaluate(ASTNode* node, Env* env) {
         case NODE_NUMBER: {
             return node->value;
         }
+        case NODE_STRING: {
+            if (node->name) {
+                printf("%s\n", node->name);
+            }
+            return 0;
+        }
         case NODE_IDENTIFIER: {
             if (node->name) {
                 return env_get(env, node->name);
@@ -28,15 +35,38 @@ int evaluate(ASTNode* node, Env* env) {
         case NODE_BINARY_OP: {
             int left_value = evaluate(node->left, env);
             int right_value = evaluate(node->right, env);
-            switch (node->op) {
-                case '+':
-                    return left_value + right_value;
-                case '-':
-                    return left_value - right_value;
-                default:
-                    printf("Unsupported binary operation: '%s'\n", node->name);
-                    return 0;
+
+            if (node->name == NULL) {
+                printf("Unsupported binary operation\n");
+                return 0;
             }
+
+            if (strcmp(node->name, "+") == 0)
+                return left_value + right_value;
+
+            if (strcmp(node->name, "-") == 0)
+                return left_value - right_value;
+
+            if (strcmp(node->name, "*") == 0)
+                return left_value * right_value;
+
+            if (strcmp(node->name, "/") == 0)
+                return left_value / right_value;
+
+            if (strcmp(node->name, ">") == 0)
+                return left_value > right_value;
+
+            if (strcmp(node->name, "<") == 0)
+                return left_value < right_value;
+
+            if (strcmp(node->name, "==") == 0)
+                return left_value == right_value;
+
+            if (strcmp(node->name, "!=") == 0)
+                return left_value != right_value;
+
+            printf("Unsupported binary operation: '%s'\n", node->name);
+            return 0;
         }
         case NODE_ASSIGN: {
             int value = evaluate(node->right, env);

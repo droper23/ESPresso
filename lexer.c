@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 void initLexer(Lexer* lexer, const char* input) {
     lexer->current = input;
@@ -12,186 +13,177 @@ void initLexer(Lexer* lexer, const char* input) {
 }
 
 bool matchNext(Lexer* lexer, char expected) {
-    if (*lexer->current != expected) {
+    if (*lexer->current == '\0' || *lexer->current != expected)
         return false;
-    }
-    lexer->current++;
 
+    lexer->current++;
     return true;
 }
 
 Token getNextToken(Lexer* lexer) {
-    while (lexer->current && isspace(*lexer->current)) {
-        lexer->current++;
+
+    while (1) {
+
+        // skip whitespace
+        while (*lexer->current && isspace(*lexer->current))
+            lexer->current++;
+
+        // skip # comments
+        if (*lexer->current == '#') {
+            while (*lexer->current && *lexer->current != '\n')
+                lexer->current++;
+            continue;
+        }
+
+        // skip // comments
+        if (*lexer->current == '/' && *(lexer->current + 1) == '/') {
+            lexer->current += 2;
+            while (*lexer->current && *lexer->current != '\n')
+                lexer->current++;
+            continue;
+        }
+
+        break;
     }
 
     lexer->start = lexer->current;
     char c = *lexer->current++;
 
+    Token t;
+
     if (c == '\0') {
-        Token t;
         t.type = TOKEN_EOF;
         t.lexeme = "";
         return t;
     }
 
+    // numbers
     if (isdigit(c)) {
-        while (isdigit(*lexer->current)) {
+        while (isdigit(*lexer->current))
             lexer->current++;
-        }
 
-        const int length = lexer->current - lexer->start;
+        int len = lexer->current - lexer->start;
 
-        Token t;
         t.type = TOKEN_NUMBER;
-        t.lexeme = strndup(lexer->start, length);
-
+        t.lexeme = strndup(lexer->start, len);
         return t;
     }
 
-    if (isalpha(c)) {
-        while (isalnum(*lexer->current)) {
+    // identifiers and keywords
+    if (isalpha(c) || c == '_') {
+
+        while (isalnum(*lexer->current) || *lexer->current == '_')
             lexer->current++;
-        }
-        int length = lexer->current - lexer->start;
-        char* text = strndup(lexer->start, length);
 
-        Token t;
+        int len = lexer->current - lexer->start;
+        char* text = strndup(lexer->start, len);
 
-        if (strcmp(text, "print") == 0) {
+        if (strcmp(text, "print") == 0)
             t.type = TOKEN_PRINT;
-            t.lexeme = strdup(text);
-        } else if (strcmp(text, "if") == 0) {
+        else if (strcmp(text, "if") == 0)
             t.type = TOKEN_IF;
-            t.lexeme = strdup(text);
-        } else if (strcmp(text, "while") == 0) {
+        else if (strcmp(text, "while") == 0)
             t.type = TOKEN_WHILE;
-            t.lexeme = strdup(text);
-        } else {
+        else
             t.type = TOKEN_IDENTIFIER;
-            t.lexeme = text;
-        }
 
+        t.lexeme = text;
         return t;
     }
 
-    if (!isalnum(c)) {
-        Token t;
+    // strings
+    if (c == '"') {
 
-        switch (c) {
-            case '=':
-                if (matchNext(lexer, '=')) {
-                    t.type = TOKEN_EQUAL_EQUAL;
-                    t.lexeme = "==";
-                } else {
-                    t.type = TOKEN_EQUAL;
-                    t.lexeme = "=";
-                }
-                break;
+        const char* strStart = lexer->current;
 
-            case '!':
-                if (matchNext(lexer, '=')) {
-                    t.type = TOKEN_NOT_EQUAL;
-                    t.lexeme = "!=";
-                } else {
-                    t.type = TOKEN_NOT;
-                    t.lexeme = "!";
-                }
-                break;
+        while (*lexer->current && *lexer->current != '"')
+            lexer->current++;
 
-            case '+':
-                if (matchNext(lexer, '=')) {
-                    t.type = TOKEN_PLUS_EQUAL;
-                    t.lexeme = "+=";
-                } else {
-                    t.type = TOKEN_PLUS;
-                    t.lexeme = "+";
-                }
-                break;
-
-            case '-':
-                if (matchNext(lexer, '=')) {
-                    t.type = TOKEN_MINUS_EQUAL;
-                    t.lexeme = "-=";
-                } else {
-                    t.type = TOKEN_MINUS;
-                    t.lexeme = "-";
-                }
-                break;
-
-            case '>':
-                if (matchNext(lexer, '=')) {
-                    t.type = TOKEN_GREATER_EQUAL;
-                    t.lexeme = ">=";
-                } else {
-                    t.type = TOKEN_GREATER;
-                    t.lexeme = ">";
-                }
-                break;
-
-            case '<':
-                if (matchNext(lexer, '=')) {
-                    t.type = TOKEN_LESS_EQUAL;
-                    t.lexeme = "<=";
-                } else {
-                    t.type = TOKEN_LESS;
-                    t.lexeme = "<";
-                }
-                break;
-
-            case '(':
-                t.type = TOKEN_OPEN_PARENTHESIS;
-                t.lexeme = "(";
-                break;
-
-            case ')':
-                t.type = TOKEN_CLOSE_PARENTHESIS;
-                t.lexeme = ")";
-                break;
-
-            case '[':
-                t.type = TOKEN_OPEN_BRACKETS;
-                t.lexeme = "[";
-                break;
-
-            case ']':
-                t.type = TOKEN_CLOSE_BRACKETS;
-                t.lexeme = "]";
-                break;
-
-            case '{':
-                t.type = TOKEN_OPEN_BRACES;
-                t.lexeme = "{";
-                break;
-
-            case '}':
-                t.type = TOKEN_CLOSE_BRACES;
-                t.lexeme = "}";
-                break;
-
-            default: {
-                Token t;
-                t.type = TOKEN_UNKNOWN;
-
-                char buf[2];
-                buf[0] = c;
-                buf[1] = '\0';
-
-                t.lexeme = strdup(buf);
-                return t;
-            }
+        if (*lexer->current != '"') {
+            t.type = TOKEN_UNKNOWN;
+            t.lexeme = "Unterminated string";
+            return t;
         }
 
+        int len = lexer->current - strStart;
+
+        t.type = TOKEN_STRING;
+        t.lexeme = strndup(strStart, len);
+
+        lexer->current++; // skip closing quote
         return t;
     }
-}
 
+    // operators and symbols
+    switch (c) {
 
-const char* tokenTypeToString(TokenType type) {
-    switch(type) {
-#define X(name) case name: return #name;
-        TOKEN_LIST
-#undef X
-        default: return "UNKNOWN_TOKEN_TYPE";
+        case '=': {
+            bool eq = matchNext(lexer, '=');
+            t.type = eq ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL;
+            t.lexeme = eq ? "==" : "=";
+            return t;
+        }
+
+        case '!': {
+            bool neq = matchNext(lexer, '=');
+            t.type = neq ? TOKEN_NOT_EQUAL : TOKEN_NOT;
+            t.lexeme = neq ? "!=" : "!";
+            return t;
+        }
+
+        case '+':
+            t.type = TOKEN_PLUS;
+            t.lexeme = "+";
+            return t;
+
+        case '-':
+            t.type = TOKEN_MINUS;
+            t.lexeme = "-";
+            return t;
+
+        case '*':
+            t.type = TOKEN_MULTIPLY;
+            t.lexeme = "*";
+            return t;
+
+        case '/':
+            t.type = TOKEN_DIVIDE;
+            t.lexeme = "/";
+            return t;
+
+        case '(':
+            t.type = TOKEN_OPEN_PARENTHESIS;
+            t.lexeme = "(";
+            return t;
+
+        case ')':
+            t.type = TOKEN_CLOSE_PARENTHESIS;
+            t.lexeme = ")";
+            return t;
+
+        case '{':
+            t.type = TOKEN_OPEN_BRACES;
+            t.lexeme = "{";
+            return t;
+
+        case '}':
+            t.type = TOKEN_CLOSE_BRACES;
+            t.lexeme = "}";
+            return t;
+
+        case ',':
+            t.type = TOKEN_COMMA;
+            t.lexeme = ",";
+            return t;
+
+        case ';':
+            t.type = TOKEN_SEMICOLON;
+            t.lexeme = ";";
+            return t;
+
+        default:
+            t.type = TOKEN_UNKNOWN;
+            t.lexeme = strndup(&c, 1);
+            return t;
     }
 }

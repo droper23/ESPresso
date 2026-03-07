@@ -7,12 +7,18 @@
 
 typedef enum {
     NODE_NUMBER,
+    NODE_STRING,
     NODE_BINARY_OP,
     NODE_PRINT,
     NODE_IDENTIFIER,
     NODE_UNKNOWN,
     NODE_BLOCK,
     NODE_ASSIGN,
+    NODE_IF,
+    NODE_WHILE,
+    NODE_FOR,
+    NODE_FUNCTION,
+    NODE_RETURN,
 } NodeType;
 
 typedef struct ASTNode {

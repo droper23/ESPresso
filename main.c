@@ -9,11 +9,11 @@
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        printf("Usage: %s <file.espresso>\n", argv[0]);
+        printf("Usage: %s <file.espr>\n", argv[0]);
         return 1;
     }
 
-    // 1. Read file
+    // Read file
     FILE* f = fopen(argv[1], "r");
     if (!f) {
         perror("fopen");
@@ -28,14 +28,14 @@ int main(int argc, char* argv[]) {
     source[size] = '\0';
     fclose(f);
 
-    // 2. Initialize lexer and parser
+    // Initialize lexer and parser
     Lexer lexer;
     initLexer(&lexer, source);
 
     Parser parser;
     initParser(&parser, &lexer);
 
-    // 3. Parse statements into AST
+    // Parse statements into AST
     ASTNode* program = NULL;
     ASTNode* last = NULL;
     while (parser.current.type != TOKEN_EOF) {
@@ -48,17 +48,17 @@ int main(int argc, char* argv[]) {
         last = stmt;
     }
 
-    // 4. Create global environment
+    // Create global environment
     Env* global = create_environment(NULL);
 
-    // 5. Evaluate the program
+    // Evaluate the program
     ASTNode* stmt = program;
     while (stmt) {
         evaluate(stmt, global);
         stmt = stmt->next;
     }
 
-    // 6. Cleanup
+    // Cleanup
     freeAST(program);
     free_environment(global);
     free(source);

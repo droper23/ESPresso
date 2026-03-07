@@ -22,7 +22,6 @@
     X(TOKEN_LESS_EQUAL) \
     X(TOKEN_EOF) \
     X(TOKEN_UNKNOWN) \
-    X(TOKEN_STAR) \
     X(TOKEN_MULTIPLY) \
     X(TOKEN_OPEN_PARENTHESIS) \
     X(TOKEN_CLOSE_PARENTHESIS) \
@@ -34,7 +33,12 @@
     X(TOKEN_PLUS_EQUAL) \
     X(TOKEN_MINUS_EQUAL) \
     X(TOKEN_IF) \
-    X(TOKEN_WHILE)
+    X(TOKEN_WHILE) \
+    X(TOKEN_DIVIDE) \
+    X(TOKEN_STAR_EQUAL) \
+    X(TOKEN_SLASH_EQUAL) \
+    X(TOKEN_STRING) \
+    X(TOKEN_SEMICOLON)
 
 typedef enum {
 #define X(name) name,
