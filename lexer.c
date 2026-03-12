@@ -78,9 +78,7 @@ Token getNextToken(Lexer* lexer) {
         int len = lexer->current - lexer->start;
         char* text = strndup(lexer->start, len);
 
-        if (strcmp(text, "print") == 0)
-            t.type = TOKEN_PRINT;
-        else if (strcmp(text, "if") == 0)
+        if (strcmp(text, "if") == 0)
             t.type = TOKEN_IF;
         else if (strcmp(text, "while") == 0)
             t.type = TOKEN_WHILE;
@@ -128,6 +126,28 @@ Token getNextToken(Lexer* lexer) {
             bool neq = matchNext(lexer, '=');
             t.type = neq ? TOKEN_NOT_EQUAL : TOKEN_NOT;
             t.lexeme = neq ? "!=" : "!";
+            return t;
+        }
+
+        case '>': {
+            if (matchNext(lexer, '=')) {
+                t.type = TOKEN_GREATER_EQUAL;
+                t.lexeme = ">=";
+            } else {
+                t.type = TOKEN_GREATER;
+                t.lexeme = ">";
+            }
+            return t;
+        }
+
+        case '<': {
+            if (matchNext(lexer, '=')) {
+                t.type = TOKEN_LESS_EQUAL;
+                t.lexeme = "<=";
+            } else {
+                t.type = TOKEN_LESS;
+                t.lexeme = "<";
+            }
             return t;
         }
 

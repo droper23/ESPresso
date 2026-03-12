@@ -5,8 +5,27 @@ print("Hello world")
 x = 5
 y = 10
 
-z = x + y
+z = x * y + 3
 print(z)
 
-a = (x + y) * 2
-print(a)
+log("value of x:", x)
+log("value of y:", y)
+log("sum of x and y:", x + y)
+
+result = (x + y) * (z - 2)
+print(result)
+
+message = "done"
+print(message)
+
+if x > 3 {
+    print("x is greater than 3")
+}
+
+counter = 0
+while counter < 3 {
+    print("counter:", counter)
+    counter = counter + 1
+}
+
+print("All tests done")

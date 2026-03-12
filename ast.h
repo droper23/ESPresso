@@ -27,6 +27,7 @@ typedef struct ASTNode {
     struct ASTNode* right;
 
     int value;
+    float floatValue;
     char* name;
     char op;
 

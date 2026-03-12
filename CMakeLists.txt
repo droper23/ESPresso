@@ -17,6 +17,8 @@ add_executable(ESPresso main.c
         env.h
         test_env.c
         test_eval.c
+        value.c
+        value.h
 )
 #
 #add_executable(test_env

@@ -26,26 +26,24 @@ Env* create_environment(Env* parent) {
     env->parent = parent;
     for (int i = 0; i < MAX_VARS; i++) {
         env->variables[i].name = NULL;
-        env->variables[i].value = 0;
+        env->variables[i].value = makeNil();
     }
     return env;
 }
 
-int env_get(Env* env, const char* name) {
+Value env_get(Env* env, const char* name) {
     struct Variable* var = find_variable(env, name);
-    return var ? var->value : 0;
+    return var ? var->value : makeNil();
 }
 
-void env_set(Env* env, const char* name, int value) {
+void env_set(Env* env, const char* name, Value value) {
     struct Variable* var = find_variable(env, name);
 
     if (var != NULL) {
-        // Variable exists somewhere — update it
         var->value = value;
         return;
     }
 
-    // Variable doesn't exist — create it in current environment
     if (env->count < MAX_VARS) {
         env->variables[env->count].name = strdup(name);
         env->variables[env->count].value = value;

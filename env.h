@@ -6,12 +6,13 @@
 #define ENV_H
 
 #include <stddef.h>
+#include "value.h"
 
 #define MAX_VARS 64
 
 struct Variable {
     char* name;
-    int value;
+    Value value;
 };
 
 typedef struct Env {
@@ -22,9 +23,9 @@ typedef struct Env {
 
 Env* create_environment(Env* parent);
 
-int env_get(Env* env, const char* name);
+Value env_get(Env* env, const char* name);
 
-void env_set(Env* env, const char* name, int value);
+void env_set(Env* env, const char* name, Value value);
 
 void free_environment(Env* env);
 

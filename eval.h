@@ -6,8 +6,9 @@
 #define EVAL_H
 #include "ast.h"
 #include "env.h"
+#include "value.h"
 
-int evaluate(ASTNode* node, Env* env);
+Value evaluate(ASTNode* node, Env* env);
 
 void freeAST(ASTNode* node);
 
