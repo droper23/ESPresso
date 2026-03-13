@@ -19,6 +19,11 @@ typedef enum {
     NODE_FOR,
     NODE_FUNCTION,
     NODE_RETURN,
+    NODE_FUNCTION_DEF,
+    NODE_VAR_DECL,
+    NODE_LOGICAL_AND,
+    NODE_LOGICAL_OR,
+    NODE_NIL,
 } NodeType;
 
 typedef struct ASTNode {
@@ -32,6 +37,8 @@ typedef struct ASTNode {
     char op;
 
     struct ASTNode* body;
+    struct ASTNode* alternate; // For 'else' branches
+    struct ASTNode* increment; // For 'for' loops
     struct ASTNode* next;
 
     TokenType tokenType;

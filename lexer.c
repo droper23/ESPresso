@@ -80,8 +80,28 @@ Token getNextToken(Lexer* lexer) {
 
         if (strcmp(text, "if") == 0)
             t.type = TOKEN_IF;
+        else if (strcmp(text, "else") == 0)
+            t.type = TOKEN_ELSE;
         else if (strcmp(text, "while") == 0)
             t.type = TOKEN_WHILE;
+        else if (strcmp(text, "for") == 0)
+            t.type = TOKEN_FOR;
+        else if (strcmp(text, "in") == 0)
+            t.type = TOKEN_IN;
+        else if (strcmp(text, "fn") == 0)
+            t.type = TOKEN_FN;
+        else if (strcmp(text, "return") == 0)
+            t.type = TOKEN_RETURN;
+        else if (strcmp(text, "let") == 0)
+            t.type = TOKEN_LET;
+        else if (strcmp(text, "var") == 0)
+            t.type = TOKEN_VAR;
+        else if (strcmp(text, "true") == 0)
+            t.type = TOKEN_TRUE;
+        else if (strcmp(text, "false") == 0)
+            t.type = TOKEN_FALSE;
+        else if (strcmp(text, "nil") == 0)
+            t.type = TOKEN_NIL;
         else
             t.type = TOKEN_IDENTIFIER;
 
@@ -199,6 +219,26 @@ Token getNextToken(Lexer* lexer) {
         case ';':
             t.type = TOKEN_SEMICOLON;
             t.lexeme = ";";
+            return t;
+
+        case '&':
+            if (matchNext(lexer, '&')) {
+                t.type = TOKEN_AND;
+                t.lexeme = "&&";
+            } else {
+                t.type = TOKEN_UNKNOWN;
+                t.lexeme = "&";
+            }
+            return t;
+
+        case '|':
+            if (matchNext(lexer, '|')) {
+                t.type = TOKEN_OR;
+                t.lexeme = "||";
+            } else {
+                t.type = TOKEN_UNKNOWN;
+                t.lexeme = "|";
+            }
             return t;
 
         default:

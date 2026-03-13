@@ -10,7 +10,9 @@ typedef enum {
     VALUE_FLOAT,
     VALUE_STRING,
     VALUE_BOOL,
-    VALUE_NIL
+    VALUE_NIL,
+    VALUE_FUNCTION,
+    VALUE_RETURN
 } ValueType;
 
 typedef struct Value {
@@ -20,6 +22,11 @@ typedef struct Value {
         float floatValue;
         const char* stringValue;
         int boolValue;
+        struct {
+            struct ASTNode* declaration;
+            struct Env* closure;
+        } functionValue;
+        struct Value* returnValue; // Pointer to the wrapped return value
     } data;
 } Value;
 
@@ -28,5 +35,8 @@ Value makeFloat(float f);
 Value makeString(const char* s);
 Value makeBool(int b);
 Value makeNil();
+Value makeFunction(struct ASTNode* declaration, struct Env* closure);
+Value makeReturn(Value value);
+void freeValueContents(Value v);
 
 #endif //ESPRESSO_VALUE_H

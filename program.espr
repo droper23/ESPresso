@@ -1,31 +1,63 @@
-## program.espr
+// program.espr
 
-print("Hello world")
+print("--- Testing Literals and Logical Ops ---")
+let a = true
+let b = false
+let n = nil
+print("a (true):", a)
+print("b (false):", b)
+print("n (nil):", n)
 
-x = 5
-y = 10
-
-z = x * y + 3
-print(z)
-
-log("value of x:", x)
-log("value of y:", y)
-log("sum of x and y:", x + y)
-
-result = (x + y) * (z - 2)
-print(result)
-
-message = "done"
-print(message)
-
-if x > 3 {
-    print("x is greater than 3")
+if a && !b {
+    print("Logic OK: a && !b is true")
+} else {
+    print("Logic FAIL: a && !b")
 }
 
-counter = 0
-while counter < 3 {
-    print("counter:", counter)
-    counter = counter + 1
+if b || n == nil {
+    print("Logic OK: b || n == nil is true")
 }
 
-print("All tests done")
+print("--- Testing Variable Scoping ---")
+var x = 10
+{
+    let x = 20
+    print("Inner x (20):", x)
+}
+print("Outer x (10):", x)
+
+print("--- Testing If / Else If ---")
+let score = 85
+if score >= 90 {
+    print("Grade: A")
+} else if score >= 80 {
+    print("Grade: B")
+} else {
+    print("Grade: C")
+}
+
+print("--- Testing For Loop ---")
+for var i = 0; i < 3; i = i + 1 {
+    print("Loop i:", (i + 10) * 10)
+}
+
+print("--- Testing Functions and Closures ---")
+fn makeCounter(start) {
+    let count = start
+    fn next() {
+        count = count + 1
+        return count
+    }
+    return next
+}
+
+let counter = makeCounter(10)
+print("Counter 1 (11):", counter())
+print("Counter 2 (12):", counter())
+
+fn add(a, b) {
+    return a + b
+}
+print("add(5, 3):", add(5, 3))
+
+print("--- All Tests Finished ---")

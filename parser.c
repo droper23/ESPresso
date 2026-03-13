@@ -23,6 +23,8 @@ ASTNode* makeNode(NodeType type) {
     node->op = 0;
     node->next = NULL;
     node->body = NULL;
+    node->alternate = NULL;
+    node->increment = NULL;
     return node;
 }
 
@@ -44,6 +46,11 @@ ASTNode* makeUnknownNode(Parser* parser) {
 
 int getPrecedence(TokenType type) {
     switch (type) {
+
+        case TOKEN_OR:
+            return 2;
+        case TOKEN_AND:
+            return 3;
 
         case TOKEN_EQUAL_EQUAL:
         case TOKEN_NOT_EQUAL:
@@ -69,6 +76,12 @@ int getPrecedence(TokenType type) {
 }
 
 ASTNode* parseFactor(Parser* parser);
+ASTNode* parseIf(Parser* parser);
+ASTNode* parseWhile(Parser* parser);
+ASTNode* parseFor(Parser* parser);
+ASTNode* parseVarDecl(Parser* parser);
+ASTNode* parseFunctionDef(Parser* parser);
+ASTNode* parseReturn(Parser* parser);
 
 ASTNode* parseExpressionPrecedence(Parser* parser, int precedence) {
 
@@ -144,6 +157,148 @@ ASTNode* parseIf(Parser* parser) {
     node->left = condition;
     node->body = body;
 
+    if (parser->current.type == TOKEN_ELSE) {
+        advance(parser);
+        if (parser->current.type == TOKEN_IF) {
+            node->alternate = parseIf(parser);
+        } else {
+            node->alternate = parseStatement(parser);
+        }
+    }
+
+    return node;
+}
+
+ASTNode* parseFor(Parser* parser) {
+    advance(parser); // skip 'for'
+
+    ASTNode* init = NULL;
+    if (parser->current.type == TOKEN_LET || parser->current.type == TOKEN_VAR) {
+        init = parseVarDecl(parser);
+    } else if (parser->current.type != TOKEN_SEMICOLON) {
+        init = parseAssignment(parser);
+    }
+    if (parser->current.type == TOKEN_SEMICOLON) advance(parser);
+
+    ASTNode* condition = NULL;
+    if (parser->current.type != TOKEN_SEMICOLON) {
+        condition = parseExpression(parser);
+    }
+    if (parser->current.type == TOKEN_SEMICOLON) advance(parser);
+
+    ASTNode* increment = NULL;
+    if (parser->current.type != TOKEN_OPEN_BRACES) {
+        increment = parseAssignment(parser);
+    }
+
+    if (parser->current.type != TOKEN_OPEN_BRACES) {
+        printf("Error: expected '{' after for header\n");
+        return makeUnknownNode(parser);
+    }
+
+    ASTNode* body = parseStatement(parser);
+
+    ASTNode* node = makeNode(NODE_FOR);
+    node->left = init;
+    node->right = condition;
+    node->body = body;
+    node->increment = increment;
+
+    return node;
+}
+
+ASTNode* parseVarDecl(Parser* parser) {
+    record_token_type:;
+    TokenType t = parser->current.type; // TOKEN_LET or TOKEN_VAR
+    advance(parser);
+
+    if (parser->current.type != TOKEN_IDENTIFIER) {
+        printf("Error: expected identifier after declaration keyword\n");
+        return makeUnknownNode(parser);
+    }
+
+    ASTNode* id = makeNode(NODE_IDENTIFIER);
+    id->name = strdup(parser->current.lexeme);
+    advance(parser);
+
+    ASTNode* init = NULL;
+    if (parser->current.type == TOKEN_EQUAL) {
+        advance(parser);
+        init = parseExpression(parser);
+    }
+
+    ASTNode* node = makeNode(NODE_VAR_DECL);
+    node->name = id->name;
+    node->left = init;
+    node->tokenType = t;
+
+    return node;
+}
+
+ASTNode* parseFunctionDef(Parser* parser) {
+    advance(parser); // skip 'fn'
+
+    if (parser->current.type != TOKEN_IDENTIFIER) {
+        printf("Error: expected identifier for function name\n");
+        return makeUnknownNode(parser);
+    }
+
+    char* name = strdup(parser->current.lexeme);
+    advance(parser);
+
+    if (parser->current.type != TOKEN_OPEN_PARENTHESIS) {
+        printf("Error: expected '(' after function name\n");
+        return makeUnknownNode(parser);
+    }
+    advance(parser);
+
+    ASTNode* params = NULL;
+    ASTNode* lastParam = NULL;
+    while (parser->current.type != TOKEN_CLOSE_PARENTHESIS && parser->current.type != TOKEN_EOF) {
+        if (parser->current.type != TOKEN_IDENTIFIER) {
+            printf("Error: expected parameter identifier\n");
+            break;
+        }
+
+        ASTNode* param = makeNode(NODE_IDENTIFIER);
+        param->name = strdup(parser->current.lexeme);
+        advance(parser);
+
+        if (!params) params = param;
+        else lastParam->next = param;
+        lastParam = param;
+
+        if (parser->current.type == TOKEN_COMMA) advance(parser);
+    }
+
+    if (parser->current.type == TOKEN_CLOSE_PARENTHESIS) advance(parser);
+
+    if (parser->current.type != TOKEN_OPEN_BRACES) {
+        printf("Error: expected '{' for function body\n");
+        return makeUnknownNode(parser);
+    }
+
+    ASTNode* body = parseStatement(parser);
+
+    ASTNode* node = makeNode(NODE_FUNCTION_DEF);
+    node->name = name;
+    node->left = params;
+    node->body = body;
+
+    return node;
+}
+
+ASTNode* parseReturn(Parser* parser) {
+    advance(parser); // skip 'return'
+
+    ASTNode* expr = NULL;
+    if (parser->current.type != TOKEN_SEMICOLON && parser->current.type != TOKEN_CLOSE_BRACES) {
+        expr = parseExpression(parser);
+    }
+
+    ASTNode* node = makeNode(NODE_RETURN);
+    node->left = expr;
+
     return node;
 }
 
@@ -177,9 +332,29 @@ ASTNode* parseStatement(Parser* parser) {
     if (t == TOKEN_WHILE)
         return parseWhile(parser);
 
+    if (t == TOKEN_FOR)
+        return parseFor(parser);
+
+    if (t == TOKEN_FN)
+        return parseFunctionDef(parser);
+
+    if (t == TOKEN_RETURN) {
+        ASTNode* node = parseReturn(parser);
+        if (parser->current.type == TOKEN_SEMICOLON) advance(parser);
+        return node;
+    }
+
+    if (t == TOKEN_LET || t == TOKEN_VAR) {
+        ASTNode* node = parseVarDecl(parser);
+        if (parser->current.type == TOKEN_SEMICOLON) advance(parser);
+        return node;
+    }
+
     if (t == TOKEN_PRINT) {
         advance(parser);
         ASTNode* expr = parseExpression(parser);
+
+        if (parser->current.type == TOKEN_SEMICOLON) advance(parser);
 
         ASTNode* node = makeNode(NODE_PRINT);
         node->left = expr;
@@ -189,6 +364,7 @@ ASTNode* parseStatement(Parser* parser) {
 
     if (t == TOKEN_IDENTIFIER) {
         ASTNode* node = parseAssignment(parser);
+        if (parser->current.type == TOKEN_SEMICOLON) advance(parser);
         return node;
     }
 
@@ -242,6 +418,30 @@ ASTNode* parseFactor(Parser* parser) {
         node->name = strdup(parser->current.lexeme);
 
         advance(parser);
+        return node;
+    }
+
+    if (type == TOKEN_TRUE || type == TOKEN_FALSE) {
+        ASTNode* node = makeNode(NODE_NUMBER);
+        node->value = (type == TOKEN_TRUE) ? 1 : 0;
+        node->tokenType = type;
+        advance(parser);
+        return node;
+    }
+
+    if (type == TOKEN_NIL) {
+        ASTNode* node = makeNode(NODE_NIL);
+        advance(parser);
+        return node;
+    }
+
+    if (type == TOKEN_NOT || type == TOKEN_MINUS) {
+        Token op = parser->current;
+        advance(parser);
+        ASTNode* right = parseFactor(parser);
+        ASTNode* node = makeNode(NODE_BINARY_OP);
+        node->name = strdup(op.lexeme);
+        node->right = right;
         return node;
     }
 

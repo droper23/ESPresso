@@ -38,7 +38,19 @@
     X(TOKEN_STAR_EQUAL) \
     X(TOKEN_SLASH_EQUAL) \
     X(TOKEN_STRING) \
-    X(TOKEN_SEMICOLON)
+    X(TOKEN_SEMICOLON) \
+    X(TOKEN_FN) \
+    X(TOKEN_RETURN) \
+    X(TOKEN_ELSE) \
+    X(TOKEN_FOR) \
+    X(TOKEN_IN) \
+    X(TOKEN_LET) \
+    X(TOKEN_VAR) \
+    X(TOKEN_TRUE) \
+    X(TOKEN_FALSE) \
+    X(TOKEN_AND) \
+    X(TOKEN_OR) \
+    X(TOKEN_NIL)
 
 typedef enum {
 #define X(name) name,

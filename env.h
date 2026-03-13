@@ -19,6 +19,7 @@ typedef struct Env {
     struct Variable variables[MAX_VARS];
     int count;
     struct Env* parent;
+    int ref_count;
 } Env;
 
 Env* create_environment(Env* parent);
@@ -27,7 +28,11 @@ Value env_get(Env* env, const char* name);
 
 void env_set(Env* env, const char* name, Value value);
 
+void env_define(Env* env, const char* name, Value value);
+
 void free_environment(Env* env);
+void env_ref(Env* env);
+void env_unref(Env* env);
 
 static struct Variable* find_variable(Env* env, const char* name);
 
