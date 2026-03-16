@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero.png" width="800" alt="ESPresso Hero">
+  <img src="./assets/ESPresso_real.png" width="800" alt="ESPresso Hero">
 </p>
 
 # ESPresso ☕️
