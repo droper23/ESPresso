@@ -7,7 +7,9 @@
 
 typedef enum {
     NODE_NUMBER,
+    NODE_FLOAT,
     NODE_STRING,
+    NODE_NULL,
     NODE_BINARY_OP,
     NODE_PRINT,
     NODE_IDENTIFIER,
@@ -23,7 +25,10 @@ typedef enum {
     NODE_VAR_DECL,
     NODE_LOGICAL_AND,
     NODE_LOGICAL_OR,
-    NODE_NIL,
+    NODE_RANGE,
+    NODE_AUGMENTED_ASSIGN,
+    NODE_ARRAY,
+    NODE_ARRAY_INDEX
 } NodeType;
 
 typedef struct ASTNode {
@@ -38,10 +43,15 @@ typedef struct ASTNode {
 
     struct ASTNode* body;
     struct ASTNode* alternate; // For 'else' branches
-    struct ASTNode* increment; // For 'for' loops
+    struct ASTNode* increment; // For old for loops (or custom use)
     struct ASTNode* next;
 
     TokenType tokenType;
+    int isConst;   // For declarations
+    char* loopVar; // For range loops
+
+    int line;
+    int column;
 } ASTNode;
 
 #endif

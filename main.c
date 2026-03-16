@@ -7,6 +7,15 @@
 #include "eval.h"
 #include "env.h"
 
+Value nativePrint(int argCount, Value* args) {
+    for (int i = 0; i < argCount; i++) {
+        printValue(args[i]);
+        if (i < argCount - 1) printf(" ");
+    }
+    printf("\n");
+    return makeNull();
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         printf("Usage: %s <file.espr>\n", argv[0]);
@@ -50,6 +59,8 @@ int main(int argc, char* argv[]) {
 
     // Create global environment
     Env* global = create_environment(NULL);
+    env_define(global, "print", makeNative(nativePrint));
+    env_define(global, "log", makeNative(nativePrint)); // optional alias
 
     // Evaluate the program
     ASTNode* stmt = program;

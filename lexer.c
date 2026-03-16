@@ -10,6 +10,8 @@
 void initLexer(Lexer* lexer, const char* input) {
     lexer->current = input;
     lexer->start = input;
+    lexer->line = 1;
+    lexer->column = 1;
 }
 
 bool matchNext(Lexer* lexer, char expected) {
@@ -17,6 +19,7 @@ bool matchNext(Lexer* lexer, char expected) {
         return false;
 
     lexer->current++;
+    lexer->column++;
     return true;
 }
 
@@ -25,21 +28,33 @@ Token getNextToken(Lexer* lexer) {
     while (1) {
 
         // skip whitespace
-        while (*lexer->current && isspace(*lexer->current))
+        while (*lexer->current && isspace(*lexer->current)) {
+            if (*lexer->current == '\n') {
+                lexer->line++;
+                lexer->column = 1;
+            } else {
+                lexer->column++;
+            }
             lexer->current++;
+        }
 
         // skip # comments
         if (*lexer->current == '#') {
-            while (*lexer->current && *lexer->current != '\n')
+            while (*lexer->current && *lexer->current != '\n') {
                 lexer->current++;
+                lexer->column++;
+            }
             continue;
         }
 
         // skip // comments
         if (*lexer->current == '/' && *(lexer->current + 1) == '/') {
             lexer->current += 2;
-            while (*lexer->current && *lexer->current != '\n')
+            lexer->column += 2;
+            while (*lexer->current && *lexer->current != '\n') {
                 lexer->current++;
+                lexer->column++;
+            }
             continue;
         }
 
@@ -48,8 +63,11 @@ Token getNextToken(Lexer* lexer) {
 
     lexer->start = lexer->current;
     char c = *lexer->current++;
+    lexer->column++;
 
     Token t;
+    t.line = lexer->line;
+    t.column = lexer->column;
 
     if (c == '\0') {
         t.type = TOKEN_EOF;
@@ -59,12 +77,25 @@ Token getNextToken(Lexer* lexer) {
 
     // numbers
     if (isdigit(c)) {
-        while (isdigit(*lexer->current))
+        while (isdigit(*lexer->current)) {
             lexer->current++;
+            lexer->column++;
+        }
+
+        if (*lexer->current == '.' && isdigit(*(lexer->current + 1))) {
+            t.type = TOKEN_FLOAT;
+            lexer->current++;
+            lexer->column++;
+            while (isdigit(*lexer->current)) {
+                lexer->current++;
+                lexer->column++;
+            }
+        } else {
+            t.type = TOKEN_NUMBER;
+        }
 
         int len = lexer->current - lexer->start;
 
-        t.type = TOKEN_NUMBER;
         t.lexeme = strndup(lexer->start, len);
         return t;
     }
@@ -72,8 +103,10 @@ Token getNextToken(Lexer* lexer) {
     // identifiers and keywords
     if (isalpha(c) || c == '_') {
 
-        while (isalnum(*lexer->current) || *lexer->current == '_')
+        while (isalnum(*lexer->current) || *lexer->current == '_') {
             lexer->current++;
+            lexer->column++;
+        }
 
         int len = lexer->current - lexer->start;
         char* text = strndup(lexer->start, len);
@@ -92,16 +125,20 @@ Token getNextToken(Lexer* lexer) {
             t.type = TOKEN_FN;
         else if (strcmp(text, "return") == 0)
             t.type = TOKEN_RETURN;
-        else if (strcmp(text, "let") == 0)
-            t.type = TOKEN_LET;
+        else if (strcmp(text, "and") == 0)
+            t.type = TOKEN_AND;
+        else if (strcmp(text, "or") == 0)
+            t.type = TOKEN_OR;
+        else if (strcmp(text, "const") == 0)
+            t.type = TOKEN_CONST;
         else if (strcmp(text, "var") == 0)
             t.type = TOKEN_VAR;
         else if (strcmp(text, "true") == 0)
             t.type = TOKEN_TRUE;
         else if (strcmp(text, "false") == 0)
             t.type = TOKEN_FALSE;
-        else if (strcmp(text, "nil") == 0)
-            t.type = TOKEN_NIL;
+        else if (strcmp(text, "null") == 0)
+            t.type = TOKEN_NULL;
         else
             t.type = TOKEN_IDENTIFIER;
 
@@ -111,24 +148,49 @@ Token getNextToken(Lexer* lexer) {
 
     // strings
     if (c == '"') {
+        int capacity = 16;
+        char* buffer = malloc(capacity);
+        int length = 0;
 
-        const char* strStart = lexer->current;
+        while (*lexer->current != '\0' && *lexer->current != '"') {
+            char curr = *lexer->current;
+            if (curr == '\\') {
+                lexer->current++;
+                lexer->column++;
+                if (*lexer->current == 'n') curr = '\n';
+                else if (*lexer->current == 'r') curr = '\r';
+                else if (*lexer->current == 't') curr = '\t';
+                else if (*lexer->current == '\\') curr = '\\';
+                else if (*lexer->current == '"') curr = '"';
+            }
 
-        while (*lexer->current && *lexer->current != '"')
+            if (length + 1 >= capacity) {
+                capacity *= 2;
+                buffer = realloc(buffer, capacity);
+            }
+            buffer[length++] = curr;
+
+            if (*lexer->current == '\n') {
+                lexer->line++;
+                lexer->column = 1;
+            } else {
+                lexer->column++;
+            }
             lexer->current++;
+        }
 
         if (*lexer->current != '"') {
+            free(buffer);
             t.type = TOKEN_UNKNOWN;
             t.lexeme = "Unterminated string";
             return t;
         }
-
-        int len = lexer->current - strStart;
-
+        buffer[length] = '\0';
         t.type = TOKEN_STRING;
-        t.lexeme = strndup(strStart, len);
+        t.lexeme = buffer;
 
         lexer->current++; // skip closing quote
+        lexer->column++;
         return t;
     }
 
@@ -172,23 +234,43 @@ Token getNextToken(Lexer* lexer) {
         }
 
         case '+':
-            t.type = TOKEN_PLUS;
-            t.lexeme = "+";
+            if (matchNext(lexer, '=')) {
+                t.type = TOKEN_PLUS_EQUAL;
+                t.lexeme = "+=";
+            } else {
+                t.type = TOKEN_PLUS;
+                t.lexeme = "+";
+            }
             return t;
 
         case '-':
-            t.type = TOKEN_MINUS;
-            t.lexeme = "-";
+            if (matchNext(lexer, '=')) {
+                t.type = TOKEN_MINUS_EQUAL;
+                t.lexeme = "-=";
+            } else {
+                t.type = TOKEN_MINUS;
+                t.lexeme = "-";
+            }
             return t;
 
         case '*':
-            t.type = TOKEN_MULTIPLY;
-            t.lexeme = "*";
+            if (matchNext(lexer, '=')) {
+                t.type = TOKEN_STAR_EQUAL;
+                t.lexeme = "*=";
+            } else {
+                t.type = TOKEN_MULTIPLY;
+                t.lexeme = "*";
+            }
             return t;
 
         case '/':
-            t.type = TOKEN_DIVIDE;
-            t.lexeme = "/";
+            if (matchNext(lexer, '=')) {
+                t.type = TOKEN_SLASH_EQUAL;
+                t.lexeme = "/=";
+            } else {
+                t.type = TOKEN_DIVIDE;
+                t.lexeme = "/";
+            }
             return t;
 
         case '(':
@@ -199,6 +281,16 @@ Token getNextToken(Lexer* lexer) {
         case ')':
             t.type = TOKEN_CLOSE_PARENTHESIS;
             t.lexeme = ")";
+            return t;
+
+        case '[':
+            t.type = TOKEN_OPEN_BRACKETS;
+            t.lexeme = "[";
+            return t;
+
+        case ']':
+            t.type = TOKEN_CLOSE_BRACKETS;
+            t.lexeme = "]";
             return t;
 
         case '{':
@@ -241,6 +333,15 @@ Token getNextToken(Lexer* lexer) {
             }
             return t;
 
+        case '.':
+            if (matchNext(lexer, '.')) {
+                t.type = TOKEN_DOTDOT;
+                t.lexeme = "..";
+                return t;
+            }
+            t.type = TOKEN_UNKNOWN;
+            t.lexeme = ".";
+            return t;
         default:
             t.type = TOKEN_UNKNOWN;
             t.lexeme = strndup(&c, 1);

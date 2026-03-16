@@ -34,6 +34,4 @@ void free_environment(Env* env);
 void env_ref(Env* env);
 void env_unref(Env* env);
 
-static struct Variable* find_variable(Env* env, const char* name);
-
 #endif //ENV_H

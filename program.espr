@@ -1,63 +1,100 @@
 // program.espr
 
-print("--- Testing Literals and Logical Ops ---")
-let a = true
-let b = false
-let n = nil
-print("a (true):", a)
-print("b (false):", b)
-print("n (nil):", n)
+print("--- Testing Native Print ---")
+print("Multi-arg String Print:", "Success!", 123, true, null)
 
-if a && !b {
-    print("Logic OK: a && !b is true")
-} else {
-    print("Logic FAIL: a && !b")
+print("\n--- Testing Literals & Types ---")
+const a = true
+const b = false
+const n = null
+const s = "Hello World!"
+const i = 42
+const f = 3.14
+print("bools:", a, b)
+print("null:", n)
+print("string:", s)
+print("number (int):", i)
+print("number (float):", f)
+
+print("\n--- Testing Logical & Arithmetic Ops ---")
+if a and !b {
+    print("Logic (and, !): OK")
 }
-
-if b || n == nil {
-    print("Logic OK: b || n == nil is true")
+if b or n == null {
+    print("Logic (or, ==): OK")
 }
+print("Arithmetic (10 + 20 * 2):", 10 + 20 * 2)
+print("String Concatenation:", "Hello " + "World")
 
-print("--- Testing Variable Scoping ---")
-var x = 10
+print("\n--- Testing Variable Scoping & Augmented Assign ---")
+var x = 100
 {
-    let x = 20
-    print("Inner x (20):", x)
+    const x = 200
+    print("Inner Scope x (200):", x)
 }
-print("Outer x (10):", x)
+print("Outer Scope x (100):", x)
+x += 50
+print("x after += 50 (150):", x)
+x *= 2
+print("x after *= 2 (300):", x)
 
-print("--- Testing If / Else If ---")
-let score = 85
+print("\n--- Testing String Interpolation ---")
+print("Interpolation Test: The value of x is {x}!")
+const user = "Derek"
+print("Welcome, {user}! Your score is {x}.")
+
+print("\n--- Testing Basic Arrays ---")
+var arr = [10, 20, 30]
+print("Array literal:", arr)
+print("Index 1 (20):", arr[1])
+arr[0] = 5
+print("After arr[0] = 5:", arr)
+arr[2] += 5
+print("After arr[2] += 5 (35):", arr[2])
+print("Final Array:", arr)
+
+print("\n--- Testing Control Flow (Loops & If) ---")
+const score = 85
 if score >= 90 {
-    print("Grade: A")
+    print("Grade A")
 } else if score >= 80 {
-    print("Grade: B")
+    print("Grade B (Expect this)")
 } else {
-    print("Grade: C")
+    print("Grade C")
 }
 
-print("--- Testing For Loop ---")
-for var i = 0; i < 3; i = i + 1 {
-    print("Loop i:", (i + 10) * 10)
+print("For Loop (0 to 2):")
+for var j in 0..3 {
+    print("  j =", j)
 }
 
-print("--- Testing Functions and Closures ---")
-fn makeCounter(start) {
-    let count = start
-    fn next() {
-        count = count + 1
-        return count
+print("While Loop (count down 3 to 1):")
+var k = 3
+while k > 0 {
+    print("  k =", k)
+    k = k - 1
+}
+
+print("\n--- Testing Functions & Closures ---")
+fn makeAdder(x) {
+    fn add(y) {
+        return x + y
     }
-    return next
+    return add
 }
 
-let counter = makeCounter(10)
-print("Counter 1 (11):", counter())
-print("Counter 2 (12):", counter())
+const add5 = makeAdder(5)
+print("Closure (5 + 10):", add5(10))
 
-fn add(a, b) {
-    return a + b
+fn fib(n) {
+    if n <= 1 { return n }
+    return fib(n - 1) + fib(n - 2)
 }
-print("add(5, 3):", add(5, 3))
+print("Recursion fib(7):", fib(7))
 
-print("--- All Tests Finished ---")
+print("\n--- Testing Positional Error Reporting ---")
+print("Note: The following errors should report specific line numbers.")
+print("Test DivByZero:", 10 / 0) 
+unknownFunction()
+
+print("\n--- Unified Test Suite Finished ---")

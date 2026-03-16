@@ -28,7 +28,7 @@ Env* create_environment(Env* parent) {
 
     for (int i = 0; i < MAX_VARS; i++) {
         env->variables[i].name = NULL;
-        env->variables[i].value = makeNil();
+        env->variables[i].value = makeNull();
     }
     return env;
 }
@@ -54,7 +54,7 @@ void env_unref(Env* env) {
 
 Value env_get(Env* env, const char* name) {
     struct Variable* var = find_variable(env, name);
-    return var ? var->value : makeNil();
+    return var ? var->value : makeNull();
 }
 
 void env_set(Env* env, const char* name, Value value) {

@@ -9,6 +9,7 @@
 #define TOKEN_LIST \
     X(TOKEN_PRINT) \
     X(TOKEN_NUMBER) \
+    X(TOKEN_FLOAT) \
     X(TOKEN_IDENTIFIER) \
     X(TOKEN_PLUS) \
     X(TOKEN_MINUS) \
@@ -44,13 +45,14 @@
     X(TOKEN_ELSE) \
     X(TOKEN_FOR) \
     X(TOKEN_IN) \
-    X(TOKEN_LET) \
+    X(TOKEN_CONST) \
     X(TOKEN_VAR) \
     X(TOKEN_TRUE) \
     X(TOKEN_FALSE) \
     X(TOKEN_AND) \
     X(TOKEN_OR) \
-    X(TOKEN_NIL)
+    X(TOKEN_NULL) \
+    X(TOKEN_DOTDOT)
 
 typedef enum {
 #define X(name) name,
@@ -61,6 +63,8 @@ typedef enum {
 typedef struct {
     const char* start;
     const char* current;
+    int line;
+    int column;
 } Lexer;
 
 void initLexer(Lexer* lexer, const char* input);
@@ -68,6 +72,8 @@ void initLexer(Lexer* lexer, const char* input);
 typedef struct Token {
     TokenType type;
     char* lexeme;
+    int line;
+    int column;
 } Token;
 
 Token getNextToken(Lexer* lexer);
