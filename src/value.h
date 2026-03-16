@@ -48,8 +48,18 @@ typedef struct Value {
     int column;
 } Value;
 
+typedef struct {
+    int capacity;
+    int count;
+    Value* values;
+} ValueArray;
+
 struct ASTNode;
 struct Env;
+
+void initValueArray(ValueArray* array);
+void writeValueArray(ValueArray* array, Value value);
+void freeValueArray(ValueArray* array);
 
 Value makeInt(int i);
 Value makeFloat(float f);

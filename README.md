@@ -8,22 +8,11 @@ ESPresso is a lightweight, modern scripting language designed specifically for t
 
 ## Quick Start
 
-### 1. Compile the Interpreter
-You need a C compiler (like `clang` or `gcc`). Run the following command in your terminal:
+### 1. Compile and Run the Interpreter
+You need a C compiler (like `clang` or `gcc`). Run the following command in your terminal to compile the project and execute the unified test suite:
 
 ```bash
-clang -std=c11 -Wall -Wextra -o ESPresso src/*.c
-```
-
-### 2. Run a Script
-Create a file named `hello.espr`:
-```espresso
-print("Hello from ESPresso!")
-```
-
-Then run it:
-```bash
-./ESPresso examples/hello.espr
+clang -std=c11 -Wall -Wextra -o ESPresso src/*.c && ./ESPresso examples/program.espr
 ```
 
 ---

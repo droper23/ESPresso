@@ -1,6 +1,7 @@
 // value.c
 // Created by Derek Roper on 3/9/26.
 //
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -187,3 +188,24 @@ Value makeArray(int count, Value* elements) {
     return v;
 }
 
+void initValueArray(ValueArray* array) {
+    array->values = NULL;
+    array->capacity = 0;
+    array->count = 0;
+}
+
+void writeValueArray(ValueArray* array, Value value) {
+    if (array->capacity < array->count + 1) {
+        int oldCapacity = array->capacity;
+        array->capacity = oldCapacity < 8 ? 8 : oldCapacity * 2;
+        array->values = realloc(array->values, sizeof(Value) * array->capacity);
+    }
+
+    array->values[array->count] = value;
+    array->count++;
+}
+
+void freeValueArray(ValueArray* array) {
+    free(array->values);
+    initValueArray(array);
+}
