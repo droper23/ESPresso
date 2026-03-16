@@ -29,6 +29,7 @@ static Value applyBinaryOp(const char* op, Value left, Value right) {
         Value result;
         result.type = VALUE_STRING;
         result.data.stringValue = buf;
+        result.stringOwnership = STRING_OWNERSHIP_VALUE;
         return result;
     }
 
@@ -341,7 +342,17 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
         }
 
         case NODE_FUNCTION: {
-            Value func = env_get(env, node->name);
+            const char* calleeName = NULL;
+            if (node->left && node->left->type == NODE_IDENTIFIER) {
+                calleeName = node->left->name;
+            }
+
+            if (!calleeName) {
+                printf("Unknown function at [Line %d, Col %d]\n", node->line, node->column);
+                return makeNull();
+            }
+
+            Value func = env_get(env, calleeName);
 
             if (func.type == VALUE_FUNCTION) {
                 ASTNode* decl = func.data.functionValue.declaration;
@@ -397,9 +408,7 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 return result;
             }
 
-            if (node->name == NULL) return makeNull();
-
-            printf("Unknown function: '%s' at [Line %d, Col %d]\n", node->name, node->line, node->column);
+            printf("Unknown function: '%s' at [Line %d, Col %d]\n", calleeName, node->line, node->column);
             return makeNull();
         }
 

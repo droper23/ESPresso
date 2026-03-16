@@ -2,10 +2,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "lexer.h"
 #include "parser.h"
 #include "eval.h"
 #include "env.h"
+#include "chunk.h"
+#include "compiler.h"
+#include "vm.h"
 
 Value nativePrint(int argCount, Value* args) {
     for (int i = 0; i < argCount; i++) {
@@ -17,13 +21,32 @@ Value nativePrint(int argCount, Value* args) {
 }
 
 int main(int argc, char* argv[]) {
+    int useInterp = 0;
+    int trace = 0;
+    const char* filename = NULL;
+
     if (argc < 2) {
-        printf("Usage: %s <file.espr>\n", argv[0]);
+        printf("Usage: %s [--interp] [--trace] <file.espr>\n", argv[0]);
+        return 1;
+    }
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--interp") == 0) {
+            useInterp = 1;
+        } else if (strcmp(argv[i], "--trace") == 0) {
+            trace = 1;
+        } else {
+            filename = argv[i];
+        }
+    }
+
+    if (!filename) {
+        printf("Usage: %s [--interp] [--trace] <file.espr>\n", argv[0]);
         return 1;
     }
 
     // Read file
-    FILE* f = fopen(argv[1], "r");
+    FILE* f = fopen(filename, "r");
     if (!f) {
         perror("fopen");
         return 1;
@@ -62,11 +85,33 @@ int main(int argc, char* argv[]) {
     env_define(global, "print", makeNative(nativePrint));
     env_define(global, "log", makeNative(nativePrint)); // optional alias
 
-    // Evaluate the program
-    ASTNode* stmt = program;
-    while (stmt) {
-        evaluate(stmt, global);
-        stmt = stmt->next;
+    if (useInterp) {
+        // Evaluate the program with AST interpreter
+        ASTNode* stmt = program;
+        while (stmt) {
+            evaluate(stmt, global);
+            stmt = stmt->next;
+        }
+    } else {
+        // Compile and run via VM
+        Chunk chunk;
+        initChunk(&chunk);
+        if (!compile(program, &chunk)) {
+            freeChunk(&chunk);
+            freeAST(program);
+            free_environment(global);
+            free(source);
+            return 1;
+        }
+        vmSetTrace(trace);
+        InterpretResult result = interpret(&chunk, global);
+        freeChunk(&chunk);
+        if (result != INTERPRET_OK) {
+            freeAST(program);
+            free_environment(global);
+            free(source);
+            return 1;
+        }
     }
 
     // Cleanup

@@ -3,6 +3,7 @@
 //
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "chunk.h"
 
 void initChunk(Chunk* chunk) {
@@ -16,9 +17,6 @@ void initChunk(Chunk* chunk) {
 void freeChunk(Chunk* chunk) {
     free(chunk->code);
     free(chunk->lines);
-    for (int i = 0; i < chunk->constants.count; i++) {
-        freeValueContents(chunk->constants.values[i]);
-    }
     freeValueArray(&chunk->constants);
     initChunk(chunk);
 }
@@ -29,6 +27,10 @@ void writeChunk(Chunk* chunk, uint8_t byte, int line) {
         chunk->capacity = oldCapacity < 8 ? 8 : oldCapacity * 2;
         chunk->code = realloc(chunk->code, sizeof(uint8_t) * chunk->capacity);
         chunk->lines = realloc(chunk->lines, sizeof(int) * chunk->capacity);
+        if (chunk->code == NULL || chunk->lines == NULL) {
+            perror("realloc");
+            exit(1);
+        }
     }
 
     chunk->code[chunk->count] = byte;

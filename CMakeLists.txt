@@ -18,6 +18,14 @@ add_executable(ESPresso
         src/env.h
         src/value.c
         src/value.h
+        src/chunk.c
+        src/chunk.h
+        src/compiler.c
+        src/compiler.h
+        src/vm.c
+        src/vm.h
+        src/debug.c
+        src/debug.h
 )
 #
 #add_executable(test_env

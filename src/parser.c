@@ -595,65 +595,62 @@ ASTNode* parseFactor(Parser* parser) {
     }
 
     if (type == TOKEN_IDENTIFIER) {
-        ASTNode* node = NULL;
-        
-        Lexer savedLexer = *parser->lexer;
-        Token next = getNextToken(parser->lexer);
-        *parser->lexer = savedLexer;
+        ASTNode* node = makeNode(NODE_IDENTIFIER);
+        node->line = parser->current.line;
+        node->column = parser->current.column;
+        node->name = strdup(parser->current.lexeme);
+        advance(parser);
 
-        if (next.type == TOKEN_OPEN_PARENTHESIS) {
-            node = makeNode(NODE_FUNCTION);
-            node->line = parser->current.line;
-            node->column = parser->current.column;
-            node->name = strdup(parser->current.lexeme);
+        while (true) {
+            if (parser->current.type == TOKEN_OPEN_PARENTHESIS) {
+                // Function call
+                ASTNode* callNode = makeNode(NODE_FUNCTION);
+                callNode->line = node->line;
+                callNode->column = node->column;
+                callNode->left = node; // The callee
+                advance(parser); // Consume '('
 
-            advance(parser);
-            advance(parser);
+                ASTNode* lastArg = NULL;
+                if (parser->current.type != TOKEN_CLOSE_PARENTHESIS) {
+                    while (true) {
+                        ASTNode* arg = parseExpression(parser);
+                        if (!callNode->body) callNode->body = arg;
+                        else lastArg->next = arg;
+                        lastArg = arg;
 
-            ASTNode* lastArg = NULL;
-            while (parser->current.type != TOKEN_CLOSE_PARENTHESIS && parser->current.type != TOKEN_EOF) {
-                ASTNode* arg = parseExpression(parser);
-                if (!node->body) node->body = arg;
-                else lastArg->next = arg;
-                lastArg = arg;
-                if (parser->current.type == TOKEN_COMMA) advance(parser);
+                        if (parser->current.type != TOKEN_COMMA) break;
+                        advance(parser); // Consume ','
+                    }
+                }
+
+                if (parser->current.type == TOKEN_CLOSE_PARENTHESIS) advance(parser);
+                else printf("Error: expected ')' after arguments, found '%s'\n", parser->current.lexeme);
+
+                node = callNode;
+            } else if (parser->current.type == TOKEN_OPEN_BRACKETS) {
+                // Array index
+                advance(parser); // Consume '['
+                ASTNode* index = parseExpression(parser);
+                if (parser->current.type == TOKEN_CLOSE_BRACKETS) advance(parser);
+                else printf("Error: expected ']' after index, found '%s'\n", parser->current.lexeme);
+
+                ASTNode* indexNode = makeNode(NODE_ARRAY_INDEX);
+                indexNode->left = node;   // The array being indexed
+                indexNode->right = index; // The index expression
+                node = indexNode;
+            } else {
+                break;
             }
-
-            if (parser->current.type == TOKEN_CLOSE_PARENTHESIS) advance(parser);
-            else printf("Error: expected ')', found '%s'\n", parser->current.lexeme);
-        } else {
-            node = makeNode(NODE_IDENTIFIER);
-            node->line = parser->current.line;
-            node->column = parser->current.column;
-            node->name = strdup(parser->current.lexeme);
-            advance(parser);
         }
-
-        while (parser->current.type == TOKEN_OPEN_BRACKETS) {
-            advance(parser);
-            ASTNode* index = parseExpression(parser);
-            if (parser->current.type == TOKEN_CLOSE_BRACKETS) advance(parser);
-            else printf("Error: expected ']', found '%s'\n", parser->current.lexeme);
-
-            ASTNode* indexNode = makeNode(NODE_ARRAY_INDEX);
-            indexNode->left = node;
-            indexNode->right = index;
-            node = indexNode;
-        }
-
         return node;
     }
 
     if (type == TOKEN_OPEN_PARENTHESIS) {
-
         advance(parser);
-
         ASTNode* node = parseExpression(parser);
 
         if (parser->current.type != TOKEN_CLOSE_PARENTHESIS) {
-
             printf("Error: expected ')', found '%s'\n", parser->current.lexeme);
-
             ASTNode* err = makeNode(NODE_UNKNOWN);
             err->name = strdup("missing ')'");
             err->left = node;

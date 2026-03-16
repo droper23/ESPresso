@@ -12,6 +12,7 @@ Value makeInt(int i) {
     Value t;
     t.type = VALUE_INT;
     t.data.intValue = i;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -21,6 +22,17 @@ Value makeString(const char* s) {
     Value t;
     t.type = VALUE_STRING;
     t.data.stringValue = s;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.line = 0;
+    t.column = 0;
+    return t;
+}
+
+Value makeStringOwned(const char* s) {
+    Value t;
+    t.type = VALUE_STRING;
+    t.data.stringValue = strdup(s);
+    t.stringOwnership = STRING_OWNERSHIP_VALUE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -29,6 +41,7 @@ Value makeString(const char* s) {
 Value makeNull() {
     Value t;
     t.type = VALUE_NULL;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -40,6 +53,7 @@ Value makeFunction(struct ASTNode* declaration, struct Env* closure) {
     t.data.functionValue.declaration = declaration;
     t.data.functionValue.closure = closure;
     if (closure) env_ref(closure);
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -50,12 +64,17 @@ Value makeReturn(Value value) {
     t.type = VALUE_RETURN;
     t.data.returnValue = malloc(sizeof(Value));
     *(t.data.returnValue) = value;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
 }
 
 void freeValueContents(Value v) {
+    if (v.type == VALUE_STRING && v.stringOwnership == STRING_OWNERSHIP_VALUE) {
+        free((void*)v.data.stringValue);
+        return;
+    }
     if (v.type == VALUE_FUNCTION) {
         env_unref(v.data.functionValue.closure);
     } else if (v.type == VALUE_RETURN) {
@@ -73,6 +92,7 @@ Value makeBool(int b) {
     Value t;
     t.type = VALUE_BOOL;
     t.data.boolValue = b;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -82,6 +102,7 @@ Value makeFloat(float f) {
     Value t;
     t.type = VALUE_FLOAT;
     t.data.floatValue = f;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -127,6 +148,7 @@ Value makeNative(NativeFn fn) {
     Value t;
     t.type = VALUE_NATIVE;
     t.data.nativeFn = fn;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -137,6 +159,7 @@ Value makeRange(int start, int end) {
     t.type = VALUE_RANGE;
     t.data.rangeValue.start = start;
     t.data.rangeValue.end = end;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
     t.line = 0;
     t.column = 0;
     return t;
@@ -183,6 +206,7 @@ Value makeArray(int count, Value* elements) {
     v.data.arrayValue.count = count;
     v.data.arrayValue.capacity = count;
     v.data.arrayValue.elements = elements;
+    v.stringOwnership = STRING_OWNERSHIP_NONE;
     v.line = 0;
     v.column = 0;
     return v;
@@ -206,6 +230,14 @@ void writeValueArray(ValueArray* array, Value value) {
 }
 
 void freeValueArray(ValueArray* array) {
+    for (int i = 0; i < array->count; i++) {
+        Value v = array->values[i];
+        if (v.type == VALUE_STRING && v.stringOwnership == STRING_OWNERSHIP_CHUNK) {
+            free((void*)v.data.stringValue);
+        } else {
+            freeValueContents(v);
+        }
+    }
     free(array->values);
     initValueArray(array);
 }

@@ -8,11 +8,58 @@ ESPresso is a lightweight, modern scripting language designed specifically for t
 
 ## Quick Start
 
-### 1. Compile and Run the Interpreter
-You need a C compiler (like `clang` or `gcc`). Run the following command in your terminal to compile the project and execute the unified test suite:
+### 1. Build
+You need a C compiler (like `clang` or `gcc`) and CMake.
 
 ```bash
-clang -std=c11 -Wall -Wextra -o ESPresso src/*.c && ./ESPresso examples/program.espr
+cmake -S . -B build
+cmake --build build
+```
+
+### 2. Run
+By default, ESPresso runs the **bytecode VM** (currently minimal feature set).
+
+```bash
+./build/ESPresso examples/program.espr
+```
+
+### 3. VM Minimal Example
+The VM currently supports literals, arithmetic/logic, globals, `if`, `while`, and `print`. Here is a small VM-compatible program:
+
+```espresso
+print("Arithmetic:", 10 + 20 * 2)
+
+var x = 1
+x = x + 2
+print("x =", x)
+
+var k = 3
+while k > 0 {
+    print("k =", k)
+    k = k - 1
+}
+
+if 3 < 5 {
+    print("ok")
+}
+```
+
+Run it with:
+
+```bash
+./build/ESPresso examples/test.espr
+```
+
+To run the **AST interpreter** (full language support), pass `--interp`:
+
+```bash
+./build/ESPresso --interp examples/program.espr
+```
+
+To print every VM opcode as it executes, pass `--trace`:
+
+```bash
+./build/ESPresso --trace examples/test.espr
 ```
 
 ---
@@ -90,14 +137,17 @@ list[2] *= 2    # Augmented assign on index
 
 ## How It Works
 
-ESPresso currently operates as an **AST-Walking Interpreter**.
+ESPresso now has two execution paths:
+
+1.  **Bytecode VM (default)** — compiles AST to a `Chunk` and executes on a stack-based VM. This is currently minimal (literals, arithmetic/logic, globals, `if`, `while`, `print`).
+2.  **AST Interpreter (`--interp`)** — full language support for arrays, `for` loops, functions, and closures.
 
 1.  **Lexing (`lexer.c`)**: The source code is broken down into small pieces called **Tokens** (e.g., `var`, `identifier`, `+`, `number`).
 2.  **Parsing (`parser.c`)**: Tokens are organized into a tree structure called an **Abstract Syntax Tree (AST)**. This defines the hierarchy and rules of your code.
 3.  **Evaluating (`eval.c`)**: The interpreter "walks" through the tree, executing each node's logic step-by-step using an **Environment (`env.c`)** to store variables.
 
-### The Future: Bytecode VM
-I am currently working on transitioning ESPresso to a **Stack-based Bytecode VM**. This will make ESPresso significantly faster and more memory-efficient by compiling the AST into a flat list of instructions (bytecode) instead of walking a tree.
+### Bytecode VM Status
+The VM is the default runtime, but it is intentionally limited for now. For full language support, use the interpreter via `--interp`.
 
 ---
 

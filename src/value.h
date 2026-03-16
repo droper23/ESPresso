@@ -5,6 +5,8 @@
 #ifndef ESPRESSO_VALUE_H
 #define ESPRESSO_VALUE_H
 
+#include <stdint.h>
+
 typedef enum {
     VALUE_INT,
     VALUE_FLOAT,
@@ -17,6 +19,12 @@ typedef enum {
     VALUE_RANGE,
     VALUE_ARRAY
 } ValueType;
+
+typedef enum {
+    STRING_OWNERSHIP_NONE = 0,
+    STRING_OWNERSHIP_VALUE = 1,
+    STRING_OWNERSHIP_CHUNK = 2
+} StringOwnership;
 
 typedef struct Value Value;
 typedef Value (*NativeFn)(int argCount, Value* args);
@@ -44,6 +52,7 @@ typedef struct Value {
             int capacity;
         } arrayValue;
     } data;
+    StringOwnership stringOwnership;
     int line;
     int column;
 } Value;
@@ -64,6 +73,7 @@ void freeValueArray(ValueArray* array);
 Value makeInt(int i);
 Value makeFloat(float f);
 Value makeString(const char* s);
+Value makeStringOwned(const char* s);
 Value makeBool(int b);
 Value makeNull();
 Value makeFunction(struct ASTNode* declaration, struct Env* closure);
