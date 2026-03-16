@@ -12,7 +12,7 @@ ESPresso is a lightweight, modern scripting language designed specifically for t
 You need a C compiler (like `clang` or `gcc`). Run the following command in your terminal:
 
 ```bash
-clang -std=c11 -Wall -Wextra -o ESPresso main.c lexer.c parser.c eval.c env.c value.c
+clang -std=c11 -Wall -Wextra -o ESPresso src/*.c
 ```
 
 ### 2. Run a Script
@@ -23,7 +23,7 @@ print("Hello from ESPresso!")
 
 Then run it:
 ```bash
-./ESPresso hello.espr
+./ESPresso examples/hello.espr
 ```
 
 ---
@@ -114,13 +114,13 @@ I am currently working on transitioning ESPresso to a **Stack-based Bytecode VM*
 
 ## Project Structure
 
-- `lexer.h/c`: Tokenizes raw source text.
-- `parser.h/c`: Validates syntax and builds the AST.
-- `ast.h`: Defines the structure of the AST nodes.
-- `eval.h/c`: Executes the AST logic.
-- `value.h/c`: Manages ESPresso data types (Strings, Arrays, numbers).
-- `env.h/c`: Handles variable scoping and environments.
-- `main.c`: The entry point that ties everything together.
+- `src/lexer.h/c`: Tokenizes raw source text.
+- `src/parser.h/c`: Validates syntax and builds the AST.
+- `src/ast.h`: Defines the structure of the AST nodes.
+- `src/eval.h/c`: Executes the AST logic.
+- `src/value.h/c`: Manages ESPresso data types (Strings, Arrays, numbers).
+- `src/env.h/c`: Handles variable scoping and environments.
+- `src/main.c`: The entry point that ties everything together.
 
 ---
 

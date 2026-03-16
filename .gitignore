@@ -1,0 +1,25 @@
+# Binaries
+ESPresso
+
+# Build directories
+build/
+cmake-build-debug/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Object files
+*.o
+*.obj
+
+# OS junk
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE junk
+.idea/
+.vscode/
+*.swp
+*.swo
