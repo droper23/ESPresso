@@ -63,8 +63,8 @@ Use `var` for mutable variables and `const` for immutable ones.
 var score = 100
 const name = "ESPresso"
 
-score += 50  # OK
-name = "JavaScript" # Error!
+score += 50  // OK
+name = "JavaScript" // Error!
 ```
 
 ### Data Types
@@ -89,12 +89,12 @@ if x > 100 {
 
 #### Modern Loops
 ```javascript
-# Range-based for loops
+// Range-based for loops
 for var i in 0..5 {
     print("i is {i}")
 }
 
-# Standard while loops
+// Standard while loops
 var k = 3
 while k > 0 {
     print(k)
@@ -119,9 +119,9 @@ print(double(10)) # 20
 ### Arrays
 ```javascript
 var list = [10, 20, 30]
-print(list[1])  # 20
-list[0] = 5     # Mutation
-list[2] *= 2    # Augmented assign on index
+print(list[1])  // 20
+list[0] = 5     // Mutation
+list[2] *= 2    // Augmented assign on index
 ```
 
 ---
