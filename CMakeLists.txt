@@ -27,6 +27,47 @@ add_executable(ESPresso
         src/debug.c
         src/debug.h
 )
+
+enable_testing()
+add_test(NAME asan_program
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/run_asan.sh
+        $<TARGET_FILE:ESPresso>
+        ${CMAKE_SOURCE_DIR}/examples/program.espr
+)
+add_test(NAME valgrind_program
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/run_valgrind.sh
+        $<TARGET_FILE:ESPresso>
+        ${CMAKE_SOURCE_DIR}/examples/program.espr
+)
+add_test(NAME interp_suite
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/run_interp_suite.sh
+        $<TARGET_FILE:ESPresso>
+        ${CMAKE_SOURCE_DIR}/examples/program.espr
+)
+add_test(NAME parse_errors
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/run_parse_errors.sh
+        $<TARGET_FILE:ESPresso>
+        ${CMAKE_SOURCE_DIR}/examples/parse_errors/unclosed_string.espr
+        ${CMAKE_SOURCE_DIR}/examples/parse_errors/missing_brace.espr
+        ${CMAKE_SOURCE_DIR}/examples/parse_errors/bad_for.espr
+)
+add_test(NAME vm_smoke
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/run_vm_suite.sh
+        $<TARGET_FILE:ESPresso>
+        ${CMAKE_SOURCE_DIR}/examples/program.espr
+)
+add_test(NAME trace_disasm
+        COMMAND ${CMAKE_SOURCE_DIR}/tests/run_trace_disasm.sh
+        $<TARGET_FILE:ESPresso>
+        ${CMAKE_SOURCE_DIR}/examples/program.espr
+)
+if(APPLE)
+    add_test(NAME leaks_program
+            COMMAND ${CMAKE_SOURCE_DIR}/tests/run_leaks.sh
+            $<TARGET_FILE:ESPresso>
+            ${CMAKE_SOURCE_DIR}/examples/program.espr
+    )
+endif()
 #
 #add_executable(test_env
 #        test_env.c

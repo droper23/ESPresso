@@ -7,12 +7,14 @@
 #include <stdio.h>
 #include "value.h"
 #include "env.h"
+#include "chunk.h"
 
 Value makeInt(int i) {
     Value t;
     t.type = VALUE_INT;
     t.data.intValue = i;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -23,6 +25,7 @@ Value makeString(const char* s) {
     t.type = VALUE_STRING;
     t.data.stringValue = s;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = true;
     t.line = 0;
     t.column = 0;
     return t;
@@ -33,6 +36,7 @@ Value makeStringOwned(const char* s) {
     t.type = VALUE_STRING;
     t.data.stringValue = strdup(s);
     t.stringOwnership = STRING_OWNERSHIP_VALUE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -42,6 +46,7 @@ Value makeNull() {
     Value t;
     t.type = VALUE_NULL;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -54,6 +59,29 @@ Value makeFunction(struct ASTNode* declaration, struct Env* closure) {
     t.data.functionValue.closure = closure;
     if (closure) env_ref(closure);
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
+    t.line = 0;
+    t.column = 0;
+    return t;
+}
+
+Value makeFunctionObj(FunctionObj* fn) {
+    Value t;
+    t.type = VALUE_FUNCTION_OBJ;
+    t.data.functionObj = fn;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
+    t.line = 0;
+    t.column = 0;
+    return t;
+}
+
+Value makeClosure(ClosureObj* closure) {
+    Value t;
+    t.type = VALUE_CLOSURE;
+    t.data.closureObj = closure;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -65,18 +93,121 @@ Value makeReturn(Value value) {
     t.data.returnValue = malloc(sizeof(Value));
     *(t.data.returnValue) = value;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
 }
 
+Value makeBreak(void) {
+    Value t;
+    t.type = VALUE_BREAK;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
+    t.line = 0;
+    t.column = 0;
+    return t;
+}
+
+Value makeContinue(void) {
+    Value t;
+    t.type = VALUE_CONTINUE;
+    t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
+    t.line = 0;
+    t.column = 0;
+    return t;
+}
+
+static Value cloneValueDeep(Value v) {
+    Value out = v;
+    out.isBorrowed = false;
+
+    switch (v.type) {
+        case VALUE_STRING: {
+            const char* src = v.data.stringValue ? v.data.stringValue : "";
+            out = makeStringOwned(src);
+            out.line = v.line;
+            out.column = v.column;
+            return out;
+        }
+        case VALUE_ARRAY: {
+            int count = v.data.arrayValue.count;
+            Value* elements = NULL;
+            if (count > 0) {
+                elements = malloc(sizeof(Value) * count);
+                for (int i = 0; i < count; i++) {
+                    elements[i] = cloneValueDeep(v.data.arrayValue.elements[i]);
+                }
+            }
+            out = makeArray(count, elements);
+            out.line = v.line;
+            out.column = v.column;
+            return out;
+        }
+        case VALUE_FUNCTION: {
+            out = v;
+            out.isBorrowed = false;
+            if (out.data.functionValue.closure) {
+                env_ref(out.data.functionValue.closure);
+            }
+            return out;
+        }
+        case VALUE_FUNCTION_OBJ:
+        case VALUE_CLOSURE:
+            out = v;
+            out.isBorrowed = false;
+            return out;
+        case VALUE_RETURN: {
+            out.type = VALUE_RETURN;
+            out.data.returnValue = malloc(sizeof(Value));
+            *(out.data.returnValue) = cloneValueDeep(*(v.data.returnValue));
+            out.stringOwnership = STRING_OWNERSHIP_NONE;
+            out.isBorrowed = false;
+            out.line = v.line;
+            out.column = v.column;
+            return out;
+        }
+        default:
+            out = v;
+            out.isBorrowed = false;
+            return out;
+    }
+}
+
+Value valueMakeOwned(Value v) {
+    if (v.isBorrowed) {
+        return cloneValueDeep(v);
+    }
+
+    if (v.type == VALUE_STRING && v.stringOwnership != STRING_OWNERSHIP_VALUE) {
+        return cloneValueDeep(v);
+    }
+
+    return v;
+}
+
 void freeValueContents(Value v) {
+    if (v.isBorrowed) return;
     if (v.type == VALUE_STRING && v.stringOwnership == STRING_OWNERSHIP_VALUE) {
         free((void*)v.data.stringValue);
         return;
     }
     if (v.type == VALUE_FUNCTION) {
         env_unref(v.data.functionValue.closure);
+    } else if (v.type == VALUE_FUNCTION_OBJ) {
+        if (!v.data.functionObj) return;
+        if (v.data.functionObj->name) {
+            free(v.data.functionObj->name);
+        }
+        if (v.data.functionObj->ownsChunk && v.data.functionObj->chunk) {
+            freeChunk(v.data.functionObj->chunk);
+            free(v.data.functionObj->chunk);
+        }
+        free(v.data.functionObj);
+        return;
+    } else if (v.type == VALUE_CLOSURE) {
+        return;
     } else if (v.type == VALUE_RETURN) {
         freeValueContents(*(v.data.returnValue));
         free(v.data.returnValue);
@@ -93,6 +224,7 @@ Value makeBool(int b) {
     t.type = VALUE_BOOL;
     t.data.boolValue = b;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -103,6 +235,7 @@ Value makeFloat(float f) {
     t.type = VALUE_FLOAT;
     t.data.floatValue = f;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -116,6 +249,8 @@ void printValue(Value v) {
         case VALUE_BOOL:     printf("%s", v.data.boolValue ? "true" : "false");                break;
         case VALUE_NULL:     printf("null");                                                   break;
         case VALUE_FUNCTION: printf("<fn>");                                                   break;
+        case VALUE_FUNCTION_OBJ: printf("<fn>");                                               break;
+        case VALUE_CLOSURE: printf("<closure>");                                               break;
         case VALUE_NATIVE:   printf("<native fn>");                                            break;
         case VALUE_RANGE:    printf("%d..%d", v.data.rangeValue.start, v.data.rangeValue.end); break;
         case VALUE_ARRAY: {
@@ -128,6 +263,8 @@ void printValue(Value v) {
             break;
         }
         case VALUE_RETURN:   printValue(*(v.data.returnValue));                                break;
+        case VALUE_BREAK:    printf("<break>");                                               break;
+        case VALUE_CONTINUE: printf("<continue>");                                            break;
         default:           printf("<unknown>");                                                break;
     }
 }
@@ -149,6 +286,7 @@ Value makeNative(NativeFn fn) {
     t.type = VALUE_NATIVE;
     t.data.nativeFn = fn;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -160,6 +298,7 @@ Value makeRange(int start, int end) {
     t.data.rangeValue.start = start;
     t.data.rangeValue.end = end;
     t.stringOwnership = STRING_OWNERSHIP_NONE;
+    t.isBorrowed = false;
     t.line = 0;
     t.column = 0;
     return t;
@@ -174,6 +313,8 @@ char* valueToString(Value v) {
         case VALUE_BOOL:     return strdup(v.data.boolValue ? "true" : "false");
         case VALUE_NULL:     return strdup("null");
         case VALUE_FUNCTION: return strdup("<fn>");
+        case VALUE_FUNCTION_OBJ: return strdup("<fn>");
+        case VALUE_CLOSURE: return strdup("<closure>");
         case VALUE_NATIVE:   return strdup("<native fn>");
         case VALUE_RANGE:    snprintf(buf, sizeof(buf), "%d..%d", v.data.rangeValue.start, v.data.rangeValue.end); break;
         case VALUE_ARRAY: {
@@ -207,6 +348,7 @@ Value makeArray(int count, Value* elements) {
     v.data.arrayValue.capacity = count;
     v.data.arrayValue.elements = elements;
     v.stringOwnership = STRING_OWNERSHIP_NONE;
+    v.isBorrowed = false;
     v.line = 0;
     v.column = 0;
     return v;

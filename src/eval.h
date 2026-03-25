@@ -11,5 +11,6 @@
 Value evaluate(ASTNode* node, Env* env);
 
 void freeAST(ASTNode* node);
+void evalSetSource(const char* source, const char* path);
 
 #endif //EVAL_H

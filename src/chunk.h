@@ -36,20 +36,28 @@ typedef enum {
     OP_LOOP,
     OP_CALL,
     OP_ARRAY,
+    OP_RANGE,
+    OP_RANGE_START,
+    OP_RANGE_END,
+    OP_CLOSURE,
+    OP_GET_UPVALUE,
+    OP_SET_UPVALUE,
+    OP_CLOSE_UPVALUE,
     OP_RETURN,
 } OpCode;
 
-typedef struct {
+typedef struct Chunk {
     int count;
     int capacity;
     uint8_t* code;
     int* lines;
+    int* columns;
     ValueArray constants;
 } Chunk;
 
 void initChunk(Chunk* chunk);
 void freeChunk(Chunk* chunk);
-void writeChunk(Chunk* chunk, uint8_t byte, int line);
+void writeChunk(Chunk* chunk, uint8_t byte, int line, int column);
 int addConstant(Chunk* chunk, Value value);
 
 #endif // chunk_H

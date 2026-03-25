@@ -34,6 +34,27 @@ static int byteInstruction(const char* name, Chunk* chunk, int offset) {
     return offset + 2;
 }
 
+static int closureInstruction(Chunk* chunk, int offset) {
+    uint8_t constant = chunk->code[offset + 1];
+    printf("%-16s %4d '", "OP_CLOSURE", constant);
+    printValue(chunk->constants.values[constant]);
+    printf("'\n");
+
+    Value constantValue = chunk->constants.values[constant];
+    if (constantValue.type != VALUE_FUNCTION_OBJ) {
+        return offset + 2;
+    }
+
+    FunctionObj* fn = constantValue.data.functionObj;
+    int o = offset + 2;
+    for (int i = 0; i < fn->upvalueCount; i++) {
+        uint8_t isLocal = chunk->code[o++];
+        uint8_t index = chunk->code[o++];
+        printf("%04d   |                     %s %d\n", o - 2, isLocal ? "local" : "upvalue", index);
+    }
+    return o;
+}
+
 static int jumpInstruction(const char* name, int sign, Chunk* chunk, int offset) {
     uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
     jump |= chunk->code[offset + 2];
@@ -53,10 +74,17 @@ static int globalInstruction(const char* name, Chunk* chunk, int offset) {
 int disassembleInstruction(Chunk* chunk, int offset) {
     printf("%04d ", offset);
 
-    if (offset > 0 && chunk->lines[offset] == chunk->lines[offset - 1]) {
+    if (offset > 0 && chunk->lines[offset] == chunk->lines[offset - 1] &&
+        chunk->columns[offset] == chunk->columns[offset - 1]) {
         printf("   | ");
     } else {
-        printf("%4d ", chunk->lines[offset]);
+        int line = chunk->lines[offset];
+        int col = chunk->columns[offset];
+        if (col > 0) {
+            printf("%4d:%-3d ", line, col);
+        } else {
+            printf("%4d ", line);
+        }
     }
 
     uint8_t instruction = chunk->code[offset];
@@ -90,6 +118,14 @@ int disassembleInstruction(Chunk* chunk, int offset) {
             return simpleInstruction("OP_NEGATE", offset);
         case OP_PRINT:          return simpleInstruction("OP_PRINT", offset);
         case OP_CALL:           return byteInstruction("OP_CALL", chunk, offset);
+        case OP_ARRAY:          return byteInstruction("OP_ARRAY", chunk, offset);
+        case OP_RANGE:          return simpleInstruction("OP_RANGE", offset);
+        case OP_RANGE_START:    return simpleInstruction("OP_RANGE_START", offset);
+        case OP_RANGE_END:      return simpleInstruction("OP_RANGE_END", offset);
+        case OP_CLOSURE:        return closureInstruction(chunk, offset);
+        case OP_GET_UPVALUE:    return byteInstruction("OP_GET_UPVALUE", chunk, offset);
+        case OP_SET_UPVALUE:    return byteInstruction("OP_SET_UPVALUE", chunk, offset);
+        case OP_CLOSE_UPVALUE:  return simpleInstruction("OP_CLOSE_UPVALUE", offset);
         case OP_JUMP:           return jumpInstruction("OP_JUMP", 1, chunk, offset);
         case OP_JUMP_IF_FALSE:  return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
         case OP_LOOP:           return jumpInstruction("OP_LOOP", -1, chunk, offset);

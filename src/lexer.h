@@ -42,6 +42,8 @@
     X(TOKEN_SEMICOLON) \
     X(TOKEN_FN) \
     X(TOKEN_RETURN) \
+    X(TOKEN_BREAK) \
+    X(TOKEN_CONTINUE) \
     X(TOKEN_ELSE) \
     X(TOKEN_FOR) \
     X(TOKEN_IN) \
@@ -72,11 +74,15 @@ void initLexer(Lexer* lexer, const char* input);
 typedef struct Token {
     TokenType type;
     char* lexeme;
+    // Lexemes are owned when ownsLexeme is true and must be freed via freeToken.
+    bool ownsLexeme;
     int line;
     int column;
 } Token;
 
 Token getNextToken(Lexer* lexer);
+
+void freeToken(Token* token);
 
 bool matchNext(Lexer* lexer, char expected);
 

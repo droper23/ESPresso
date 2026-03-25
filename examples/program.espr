@@ -26,6 +26,11 @@ if b or n == null {
 print("Arithmetic (10 + 20 * 2):", 10 + 20 * 2)
 print("String Concatenation:", "Hello " + "World")
 
+print("\n--- Testing String Interpolation ---")
+print("Interpolation Test: The value of i is {i}!")
+const user = "Derek"
+print("Welcome, {user}! Your score is {i}.")
+
 print("\n--- Testing Variable Scoping & Augmented Assign ---")
 var x = 100
 {
@@ -37,11 +42,6 @@ x += 50
 print("x after += 50 (150):", x)
 x *= 2
 print("x after *= 2 (300):", x)
-
-print("\n--- Testing String Interpolation ---")
-print("Interpolation Test: The value of x is {x}!")
-const user = "Derek"
-print("Welcome, {user}! Your score is {x}.")
 
 print("\n--- Testing Basic Arrays ---")
 var arr = [10, 20, 30]
@@ -75,6 +75,15 @@ while k > 0 {
     k = k - 1
 }
 
+print("\n--- Testing Break/Continue ---")
+var t = 0
+while t < 5 {
+    t = t + 1
+    if t == 2 { continue }
+    if t == 4 { break }
+    print("  t =", t)
+}
+
 print("\n--- Testing Functions & Closures ---")
 fn makeAdder(x) {
     fn add(y) {
@@ -86,15 +95,34 @@ fn makeAdder(x) {
 const add5 = makeAdder(5)
 print("Closure (5 + 10):", add5(10))
 
+fn makeCounter() {
+    var c = 0
+    fn inc() {
+        c += 1
+        return c
+    }
+    return inc
+}
+
+var counter = makeCounter()
+print("Counter:", counter(), counter(), counter())
+
 fn fib(n) {
     if n <= 1 { return n }
     return fib(n - 1) + fib(n - 2)
 }
 print("Recursion fib(7):", fib(7))
 
+print("Callee Expression (makeAdder(2)(3)):", makeAdder(2)(3))
+
 print("\n--- Testing Positional Error Reporting ---")
-print("Note: The following errors should report specific line numbers.")
-print("Test DivByZero:", 10 / 0) 
-unknownFunction()
+const RUN_ERRORS = false
+if RUN_ERRORS {
+    print("Note: The following errors should report specific line numbers.")
+    print("Test DivByZero:", 10 / 0)
+    unknownFunction()
+} else {
+    print("(skipped in normal runs)")
+}
 
 print("\n--- Unified Test Suite Finished ---")

@@ -1,0 +1,28 @@
+print("Benchmark start")
+
+fn sumRange(n) {
+    var s = 0
+    for var i in 0..n {
+        s = s + i
+    }
+    return s
+}
+
+fn arrayWork() {
+    var arr = [0,1,2,3,4,5,6,7,8,9]
+    arr[5] = arr[5] + 1
+    arr[0] += 2
+    return arr[5] + arr[0]
+}
+
+var total = 0
+var loops = 120
+var i = 0
+while i < loops {
+    total = total + sumRange(120)
+    total = total + arrayWork()
+    i = i + 1
+}
+
+print("total:", total)
+print("Benchmark end")

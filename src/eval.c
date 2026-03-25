@@ -8,9 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "env.h"
 
+
+static void evalRuntimeErrorAt(int line, int column, const char* format, ...);
 
 static Value applyBinaryOp(const char* op, Value left, Value right) {
     if (strcmp(op, "+") == 0 &&
@@ -30,6 +33,7 @@ static Value applyBinaryOp(const char* op, Value left, Value right) {
         result.type = VALUE_STRING;
         result.data.stringValue = buf;
         result.stringOwnership = STRING_OWNERSHIP_VALUE;
+        result.isBorrowed = false;
         return result;
     }
 
@@ -41,7 +45,7 @@ static Value applyBinaryOp(const char* op, Value left, Value right) {
     if (strcmp(op, "-")  == 0) return useFloat ? makeFloat(l - r) : makeInt((int)(l - r));
     if (strcmp(op, "*")  == 0) return useFloat ? makeFloat(l * r) : makeInt((int)(l * r));
     if (strcmp(op, "/")  == 0) {
-        if (r == 0.0f) { printf("Error: division by zero at [Line %d, Col %d]\n", left.line, left.column); return makeNull(); }
+        if (r == 0.0f) { evalRuntimeErrorAt(left.line, left.column, "division by zero"); return makeNull(); }
         return useFloat ? makeFloat(l / r) : makeInt((int)(l / r));
     }
     if (strcmp(op, ">")  == 0) return makeBool(l >  r);
@@ -51,11 +55,105 @@ static Value applyBinaryOp(const char* op, Value left, Value right) {
     if (strcmp(op, "<=") == 0) return makeBool(l <= r);
     if (strcmp(op, ">=") == 0) return makeBool(l >= r);
 
-    printf("Unsupported binary operation: '%s'\n", op);
+    evalRuntimeErrorAt(left.line, left.column, "unsupported binary operation: '%s'", op);
     return makeNull();
 }
 
 static Value evaluate_internal(ASTNode* node, Env* env);
+
+typedef struct {
+    const char* name;
+    int line;
+    int column;
+} EvalFrame;
+
+static EvalFrame evalFrames[256];
+static int evalFrameCount = 0;
+static const char* evalSource = NULL;
+static const char* evalSourcePath = NULL;
+
+void evalSetSource(const char* source, const char* path) {
+    evalSource = source;
+    evalSourcePath = path;
+}
+
+static void pushEvalFrame(const char* name, int line, int column) {
+    if (evalFrameCount >= 256) return;
+    evalFrames[evalFrameCount++] = (EvalFrame){ name ? name : "script", line, column };
+}
+
+static void popEvalFrame(void) {
+    if (evalFrameCount > 0) evalFrameCount--;
+}
+
+static void printEvalSourceLine(int line, int column) {
+    if (!evalSource || line <= 0) return;
+    const char* p = evalSource;
+    const char* lineStart = evalSource;
+    int currentLine = 1;
+    while (*p && currentLine < line) {
+        if (*p == '\n') {
+            currentLine++;
+            lineStart = p + 1;
+        }
+        p++;
+    }
+    const char* lineEnd = lineStart;
+    while (*lineEnd && *lineEnd != '\n') lineEnd++;
+    fprintf(stderr, "  %.*s\n", (int)(lineEnd - lineStart), lineStart);
+    if (column > 0) {
+        fprintf(stderr, "  ");
+        for (int i = 1; i < column; i++) fputc(' ', stderr);
+        fputc('^', stderr);
+        fputc('\n', stderr);
+    }
+}
+
+static void evalRuntimeErrorAt(int line, int column, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    fprintf(stderr, "Error: ");
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fputc('\n', stderr);
+
+    if (column > 0) {
+        fprintf(stderr, "[line %d, col %d]\n", line, column);
+    } else if (line > 0) {
+        fprintf(stderr, "[line %d]\n", line);
+    }
+    printEvalSourceLine(line, column);
+
+    fprintf(stderr, "Stack trace:\n");
+    if (evalFrameCount == 0) {
+        if (evalSourcePath) {
+            if (column > 0) fprintf(stderr, "  at script (%s:%d:%d)\n", evalSourcePath, line, column);
+            else if (line > 0) fprintf(stderr, "  at script (%s:%d)\n", evalSourcePath, line);
+            else fprintf(stderr, "  at script\n");
+        } else {
+            if (column > 0) fprintf(stderr, "  at script (line %d, col %d)\n", line, column);
+            else if (line > 0) fprintf(stderr, "  at script (line %d)\n", line);
+            else fprintf(stderr, "  at script\n");
+        }
+        return;
+    }
+    for (int i = evalFrameCount - 1; i >= 0; i--) {
+        EvalFrame* f = &evalFrames[i];
+        if (evalSourcePath) {
+            if (f->column > 0) {
+                fprintf(stderr, "  at %s (%s:%d:%d)\n", f->name, evalSourcePath, f->line, f->column);
+            } else {
+                fprintf(stderr, "  at %s (%s:%d)\n", f->name, evalSourcePath, f->line);
+            }
+        } else {
+            if (f->column > 0) {
+                fprintf(stderr, "  at %s (line %d, col %d)\n", f->name, f->line, f->column);
+            } else {
+                fprintf(stderr, "  at %s (line %d)\n", f->name, f->line);
+            }
+        }
+    }
+}
 
 Value evaluate(ASTNode* node, Env* env) {
     if (node == NULL) return makeNull();
@@ -95,7 +193,10 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             Value cond = evaluate(node->left, env);
             if (cond.type == VALUE_RETURN) return cond;
 
-            if (isTruthy(cond)) {
+            int truthy = isTruthy(cond);
+            freeValueContents(cond);
+
+            if (truthy) {
                 return evaluate(node->body, env);
             } else if (node->alternate) {
                 return evaluate(node->alternate, env);
@@ -108,10 +209,21 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             while (1) {
                 Value cond = evaluate(node->left, env);
                 if (cond.type == VALUE_RETURN) return cond;
-                if (!isTruthy(cond)) break;
+                int truthy = isTruthy(cond);
+                freeValueContents(cond);
+                if (!truthy) break;
 
                 result = evaluate(node->body, env);
                 if (result.type == VALUE_RETURN) return result;
+                if (result.type == VALUE_BREAK) {
+                    freeValueContents(result);
+                    result = makeNull();
+                    break;
+                }
+                if (result.type == VALUE_CONTINUE) {
+                    freeValueContents(result);
+                    continue;
+                }
             }
             return result;
         }
@@ -129,7 +241,8 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 elements = malloc(sizeof(Value) * count);
                 elemNode = node->body;
                 for (int i = 0; i < count; i++) {
-                    elements[i] = evaluate(elemNode, env);
+                    Value elemVal = evaluate(elemNode, env);
+                    elements[i] = valueMakeOwned(elemVal);
                     elemNode = elemNode->next;
                 }
             }
@@ -143,21 +256,36 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             if (right.type == VALUE_RETURN) return right;
 
             if (left.type != VALUE_ARRAY) {
-                printf("Error: indexing requires an array, found %d at [Line %d]\n", left.type, node->line);
+                evalRuntimeErrorAt(node->line, node->column, "indexing requires an array, found %d", left.type);
+                freeValueContents(left);
+                freeValueContents(right);
                 return makeNull();
             }
             if (right.type != VALUE_INT) {
-                printf("Error: array index must be an integer at [Line %d]\n", node->line);
+                evalRuntimeErrorAt(node->line, node->column, "array index must be an integer");
+                freeValueContents(left);
+                freeValueContents(right);
                 return makeNull();
             }
 
             int idx = right.data.intValue;
             if (idx < 0 || idx >= left.data.arrayValue.count) {
-                printf("Error: array index out of bounds: %d at [Line %d]\n", idx, node->line);
+                evalRuntimeErrorAt(node->line, node->column, "array index out of bounds: %d", idx);
+                freeValueContents(left);
+                freeValueContents(right);
                 return makeNull();
             }
+            Value elem = left.data.arrayValue.elements[idx];
+            Value result = elem;
+            if (left.isBorrowed) {
+                result.isBorrowed = true;
+            } else {
+                result = valueMakeOwned(elem);
+            }
 
-            return left.data.arrayValue.elements[idx];
+            freeValueContents(right);
+            if (!left.isBorrowed) freeValueContents(left);
+            return result;
         }
 
         case NODE_RANGE: {
@@ -167,10 +295,15 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             if (right.type == VALUE_RETURN) return right;
 
             if (left.type != VALUE_INT || right.type != VALUE_INT) {
-                printf("Error: range bounds must be integers at [Line %d, Col %d]\n", node->line, node->column);
+                evalRuntimeErrorAt(node->line, node->column, "range bounds must be integers");
+                freeValueContents(left);
+                freeValueContents(right);
                 return makeNull();
             }
-            return makeRange(left.data.intValue, right.data.intValue);
+            Value range = makeRange(left.data.intValue, right.data.intValue);
+            freeValueContents(left);
+            freeValueContents(right);
+            return range;
         }
 
         case NODE_FOR: {
@@ -178,12 +311,14 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             if (rangeVal.type == VALUE_RETURN) return rangeVal;
 
             if (rangeVal.type != VALUE_RANGE) {
-                printf("Error: for loop expects a range at [Line %d, Col %d]\n", node->line, node->column);
+                evalRuntimeErrorAt(node->line, node->column, "for loop expects a range");
+                freeValueContents(rangeVal);
                 return makeNull();
             }
 
             int start = rangeVal.data.rangeValue.start;
             int end = rangeVal.data.rangeValue.end;
+            freeValueContents(rangeVal);
 
             Env* forEnv = create_environment(env);
             Value result = makeNull();
@@ -194,6 +329,15 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 if (result.type == VALUE_RETURN) {
                     free_environment(forEnv);
                     return result;
+                }
+                if (result.type == VALUE_BREAK) {
+                    freeValueContents(result);
+                    result = makeNull();
+                    break;
+                }
+                if (result.type == VALUE_CONTINUE) {
+                    freeValueContents(result);
+                    continue;
                 }
             }
 
@@ -206,25 +350,32 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 Value left = evaluate(node->left, env);
                 if (left.type == VALUE_RETURN) return left;
                 if (!isTruthy(left)) return left;
+                freeValueContents(left);
                 return evaluate(node->right, env);
             }
             if (strcmp(node->name, "||") == 0 || strcmp(node->name, "or") == 0) {
                 Value left = evaluate(node->left, env);
                 if (left.type == VALUE_RETURN) return left;
                 if (isTruthy(left)) return left;
+                freeValueContents(left);
                 return evaluate(node->right, env);
             }
 
             if (strcmp(node->name, "!") == 0) {
                 Value right = evaluate(node->right, env);
                 if (right.type == VALUE_RETURN) return right;
-                return makeBool(!isTruthy(right));
+                Value result = makeBool(!isTruthy(right));
+                freeValueContents(right);
+                return result;
             }
             if (strcmp(node->name, "-") == 0 && node->left == NULL) {
                 Value right = evaluate(node->right, env);
                 if (right.type == VALUE_RETURN) return right;
-                if (right.type == VALUE_FLOAT) return makeFloat(-right.data.floatValue);
-                return makeInt(-right.data.intValue);
+                Value result = (right.type == VALUE_FLOAT)
+                                   ? makeFloat(-right.data.floatValue)
+                                   : makeInt(-right.data.intValue);
+                freeValueContents(right);
+                return result;
             }
 
             Value left  = evaluate(node->left,  env);
@@ -233,11 +384,16 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             if (right.type == VALUE_RETURN) return right;
 
             if (node->name == NULL) {
-                printf("Unsupported binary operation\n");
+                evalRuntimeErrorAt(node->line, node->column, "unsupported binary operation");
+                freeValueContents(left);
+                freeValueContents(right);
                 return makeNull();
             }
 
-            return applyBinaryOp(node->name, left, right);
+            Value result = applyBinaryOp(node->name, left, right);
+            freeValueContents(left);
+            freeValueContents(right);
+            return result;
         }
 
         case NODE_ASSIGN: {
@@ -245,22 +401,42 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             if (val.type == VALUE_RETURN) return val;
             
             if (node->left->type == NODE_IDENTIFIER) {
-                env_set(env, node->left->name, val);
+                if (!env_set(env, node->left->name, val)) {
+                    evalRuntimeErrorAt(node->line, node->column, "undefined variable '%s'",
+                                       node->left->name ? node->left->name : "");
+                }
+                return env_get(env, node->left->name);
             } else if (node->left->type == NODE_ARRAY_INDEX) {
                 Value arr = evaluate(node->left->left, env);
                 Value idx = evaluate(node->left->right, env);
                 if (arr.type != VALUE_ARRAY || idx.type != VALUE_INT) {
-                    printf("Error: Invalid array assignment target at [Line %d]\n", node->line);
+                    evalRuntimeErrorAt(node->line, node->column, "invalid array assignment target");
+                    freeValueContents(arr);
+                    freeValueContents(idx);
+                    freeValueContents(val);
                     return makeNull();
                 }
                 int i = idx.data.intValue;
                 if (i < 0 || i >= arr.data.arrayValue.count) {
-                    printf("Error: Index out of bounds at [Line %d]\n", node->line);
+                    evalRuntimeErrorAt(node->line, node->column, "index out of bounds");
+                    freeValueContents(arr);
+                    freeValueContents(idx);
+                    freeValueContents(val);
                     return makeNull();
                 }
-                arr.data.arrayValue.elements[i] = val;
+                freeValueContents(arr.data.arrayValue.elements[i]);
+                arr.data.arrayValue.elements[i] = valueMakeOwned(val);
+                Value result = arr.data.arrayValue.elements[i];
+                if (arr.isBorrowed) {
+                    result.isBorrowed = true;
+                } else {
+                    result = valueMakeOwned(result);
+                    freeValueContents(arr);
+                }
+                freeValueContents(idx);
+                return result;
             }
-            return val;
+            return makeNull();
         }
 
         case NODE_AUGMENTED_ASSIGN: {
@@ -270,24 +446,42 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             if (node->left->type == NODE_IDENTIFIER) {
                 Value current = env_get(env, node->left->name);
                 Value newVal = applyBinaryOp(node->name, current, val);
-                env_set(env, node->left->name, newVal);
-                return newVal;
+                if (!env_set(env, node->left->name, newVal)) {
+                    evalRuntimeErrorAt(node->line, node->column, "undefined variable '%s'",
+                                       node->left->name ? node->left->name : "");
+                }
+                return env_get(env, node->left->name);
             } else if (node->left->type == NODE_ARRAY_INDEX) {
                 Value arr = evaluate(node->left->left, env);
                 Value idx = evaluate(node->left->right, env);
                 if (arr.type != VALUE_ARRAY || idx.type != VALUE_INT) {
-                    printf("Error: Invalid augmented assignment target at [Line %d]\n", node->line);
+                    evalRuntimeErrorAt(node->line, node->column, "invalid augmented assignment target");
+                    freeValueContents(arr);
+                    freeValueContents(idx);
+                    freeValueContents(val);
                     return makeNull();
                 }
                 int i = idx.data.intValue;
                 if (i < 0 || i >= arr.data.arrayValue.count) {
-                    printf("Error: Index out of bounds at [Line %d]\n", node->line);
+                    evalRuntimeErrorAt(node->line, node->column, "index out of bounds");
+                    freeValueContents(arr);
+                    freeValueContents(idx);
+                    freeValueContents(val);
                     return makeNull();
                 }
                 Value current = arr.data.arrayValue.elements[i];
                 Value newVal = applyBinaryOp(node->name, current, val);
-                arr.data.arrayValue.elements[i] = newVal;
-                return newVal;
+                freeValueContents(arr.data.arrayValue.elements[i]);
+                arr.data.arrayValue.elements[i] = valueMakeOwned(newVal);
+                Value result = arr.data.arrayValue.elements[i];
+                if (arr.isBorrowed) {
+                    result.isBorrowed = true;
+                } else {
+                    result = valueMakeOwned(result);
+                    freeValueContents(arr);
+                }
+                freeValueContents(idx);
+                return result;
             }
             return makeNull();
         }
@@ -299,7 +493,7 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 if (val.type == VALUE_RETURN) return val;
             }
             env_define(env, node->name, val);
-            return val;
+            return env_get(env, node->name);
         }
 
         case NODE_BLOCK: {
@@ -307,6 +501,7 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             ASTNode* stmt = node->body;
             Value result = makeNull();
             while (stmt != NULL) {
+                freeValueContents(result);
                 result = evaluate(stmt, blockEnv);
                 if (result.type == VALUE_RETURN) {
                     free_environment(blockEnv);
@@ -323,13 +518,14 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             if (val.type == VALUE_RETURN) return val;
             printValue(val);
             printf("\n");
-            return val;
+            freeValueContents(val);
+            return makeNull();
         }
 
         case NODE_FUNCTION_DEF: {
             Value fn = makeFunction(node, env);
             env_define(env, node->name, fn);
-            return fn;
+            return env_get(env, node->name);
         }
 
         case NODE_RETURN: {
@@ -340,24 +536,21 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
             }
             return makeReturn(val);
         }
+        case NODE_BREAK:
+            return makeBreak();
+        case NODE_CONTINUE:
+            return makeContinue();
 
         case NODE_FUNCTION: {
-            const char* calleeName = NULL;
-            if (node->left && node->left->type == NODE_IDENTIFIER) {
-                calleeName = node->left->name;
-            }
-
-            if (!calleeName) {
-                printf("Unknown function at [Line %d, Col %d]\n", node->line, node->column);
-                return makeNull();
-            }
-
-            Value func = env_get(env, calleeName);
+            Value func = evaluate(node->left, env);
+            if (func.type == VALUE_RETURN) return func;
 
             if (func.type == VALUE_FUNCTION) {
                 ASTNode* decl = func.data.functionValue.declaration;
                 Env* closure = func.data.functionValue.closure;
                 Env* callEnv = create_environment(closure);
+
+                pushEvalFrame(decl->name ? decl->name : "fn", node->line, node->column);
 
                 ASTNode* param = decl->left;
                 ASTNode* arg = node->body;
@@ -365,6 +558,7 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 while (param && arg) {
                     Value val = evaluate(arg, env);
                     if (val.type == VALUE_RETURN) {
+                        popEvalFrame();
                         free_environment(callEnv);
                         return val;
                     }
@@ -381,6 +575,8 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 }
 
                 free_environment(callEnv);
+                freeValueContents(func);
+                popEvalFrame();
                 return result;
             }
             if (func.type == VALUE_NATIVE) {
@@ -404,21 +600,29 @@ static Value evaluate_internal(ASTNode* node, Env* env) {
                 }
 
                 Value result = func.data.nativeFn(argCount, args);
-                if (args) free(args);
+                if (args) {
+                    for (int i = 0; i < argCount; i++) {
+                        freeValueContents(args[i]);
+                    }
+                    free(args);
+                }
+                freeValueContents(func);
                 return result;
             }
 
-            printf("Unknown function: '%s' at [Line %d, Col %d]\n", calleeName, node->line, node->column);
+            freeValueContents(func);
+            evalRuntimeErrorAt(node->line, node->column, "unknown function");
             return makeNull();
         }
 
         case NODE_UNKNOWN: {
-            printf("Unknown token: %s\n", node->name);
+            evalRuntimeErrorAt(node->line, node->column, "unknown token: %s",
+                               node->name ? node->name : "");
             return makeNull();
         }
 
         default:
-            printf("Unsupported node type: %d\n", node->type);
+            evalRuntimeErrorAt(node->line, node->column, "unsupported node type: %d", node->type);
             return makeNull();
     }
 }
@@ -428,16 +632,14 @@ void freeAST(ASTNode* node) {
 
     freeAST(node->left);
     freeAST(node->right);
+    freeAST(node->body);
+    freeAST(node->alternate);
+    freeAST(node->increment);
 
-    if (node->type == NODE_BLOCK || node->type == NODE_FUNCTION) {
-        ASTNode* stmt = node->body;
-        while (stmt) {
-            ASTNode* next = stmt->next;
-            freeAST(stmt);
-            stmt = next;
-        }
-    }
-
+    if (node->loopVar) free(node->loopVar);
     if (node->name) free(node->name);
+
+    ASTNode* next = node->next;
     free(node);
+    freeAST(next);
 }

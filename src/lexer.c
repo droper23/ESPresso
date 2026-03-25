@@ -66,6 +66,7 @@ Token getNextToken(Lexer* lexer) {
     lexer->column++;
 
     Token t;
+    t.ownsLexeme = false;
     t.line = lexer->line;
     t.column = lexer->column;
 
@@ -97,6 +98,7 @@ Token getNextToken(Lexer* lexer) {
         int len = lexer->current - lexer->start;
 
         t.lexeme = strndup(lexer->start, len);
+        t.ownsLexeme = true;
         return t;
     }
 
@@ -110,6 +112,7 @@ Token getNextToken(Lexer* lexer) {
 
         int len = lexer->current - lexer->start;
         char* text = strndup(lexer->start, len);
+        t.ownsLexeme = true;
 
         if (strcmp(text, "if") == 0)
             t.type = TOKEN_IF;
@@ -125,6 +128,10 @@ Token getNextToken(Lexer* lexer) {
             t.type = TOKEN_FN;
         else if (strcmp(text, "return") == 0)
             t.type = TOKEN_RETURN;
+        else if (strcmp(text, "break") == 0)
+            t.type = TOKEN_BREAK;
+        else if (strcmp(text, "continue") == 0)
+            t.type = TOKEN_CONTINUE;
         else if (strcmp(text, "and") == 0)
             t.type = TOKEN_AND;
         else if (strcmp(text, "or") == 0)
@@ -188,6 +195,7 @@ Token getNextToken(Lexer* lexer) {
         buffer[length] = '\0';
         t.type = TOKEN_STRING;
         t.lexeme = buffer;
+        t.ownsLexeme = true;
 
         lexer->current++; // skip closing quote
         lexer->column++;
@@ -345,6 +353,16 @@ Token getNextToken(Lexer* lexer) {
         default:
             t.type = TOKEN_UNKNOWN;
             t.lexeme = strndup(&c, 1);
+            t.ownsLexeme = true;
             return t;
     }
+}
+
+void freeToken(Token* token) {
+    if (!token) return;
+    if (token->ownsLexeme && token->lexeme) {
+        free(token->lexeme);
+    }
+    token->lexeme = NULL;
+    token->ownsLexeme = false;
 }

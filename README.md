@@ -17,40 +17,13 @@ cmake --build build
 ```
 
 ### 2. Run
-By default, ESPresso runs the **bytecode VM** (currently minimal feature set).
+By default, ESPresso runs the **bytecode VM**.
 
 ```bash
 ./build/ESPresso examples/program.espr
 ```
 
-### 3. VM Minimal Example
-The VM currently supports literals, arithmetic/logic, globals, `if`, `while`, and `print`. Here is a small VM-compatible program:
-
-```espresso
-print("Arithmetic:", 10 + 20 * 2)
-
-var x = 1
-x = x + 2
-print("x =", x)
-
-var k = 3
-while k > 0 {
-    print("k =", k)
-    k = k - 1
-}
-
-if 3 < 5 {
-    print("ok")
-}
-```
-
-Run it with:
-
-```bash
-./build/ESPresso examples/test.espr
-```
-
-To run the **AST interpreter** (full language support), pass `--interp`:
+To run the **AST interpreter**, pass `--interp`:
 
 ```bash
 ./build/ESPresso --interp examples/program.espr
@@ -59,7 +32,25 @@ To run the **AST interpreter** (full language support), pass `--interp`:
 To print every VM opcode as it executes, pass `--trace`:
 
 ```bash
-./build/ESPresso --trace examples/test.espr
+./build/ESPresso --trace examples/program.espr
+```
+
+To disassemble the compiled bytecode before execution, pass `--disasm`:
+
+```bash
+./build/ESPresso --disasm examples/program.espr
+```
+
+You can combine flags:
+
+```bash
+./build/ESPresso --trace --disasm examples/program.espr
+```
+
+To benchmark interpreter vs VM in-process, use `--bench` and optionally `--runs`:
+
+```bash
+./build/ESPresso --bench --runs 100 examples/bench.espr
 ```
 
 ---
@@ -68,7 +59,7 @@ To print every VM opcode as it executes, pass `--trace`:
 
 ### Variables & Constants
 Use `var` for mutable variables and `const` for immutable ones.
-```espresso
+```javascript
 var score = 100
 const name = "ESPresso"
 
@@ -86,7 +77,7 @@ name = "JavaScript" # Error!
 ### Control Flow
 
 #### If Statements
-```espresso
+```javascript
 if x > 100 {
     print("Large")
 } else if x > 50 {
@@ -97,7 +88,7 @@ if x > 100 {
 ```
 
 #### Modern Loops
-```espresso
+```javascript
 # Range-based for loops
 for var i in 0..5 {
     print("i is {i}")
@@ -113,7 +104,7 @@ while k > 0 {
 
 ### Functions & Closures
 First-class functions with full closure support
-```espresso
+```javascript
 fn makeMultiplier(factor) {
     fn multiply(n) {
         return n * factor
@@ -126,7 +117,7 @@ print(double(10)) # 20
 ```
 
 ### Arrays
-```espresso
+```javascript
 var list = [10, 20, 30]
 print(list[1])  # 20
 list[0] = 5     # Mutation
@@ -137,17 +128,73 @@ list[2] *= 2    # Augmented assign on index
 
 ## How It Works
 
-ESPresso now has two execution paths:
+ESPresso has two execution paths:
 
-1.  **Bytecode VM (default)** — compiles AST to a `Chunk` and executes on a stack-based VM. This is currently minimal (literals, arithmetic/logic, globals, `if`, `while`, `print`).
-2.  **AST Interpreter (`--interp`)** — full language support for arrays, `for` loops, functions, and closures.
+1. **Bytecode VM (default)** — compiles AST to a `Chunk` and executes on a stack-based VM.
+2. **AST Interpreter (`--interp`)** — executes the AST directly.
 
-1.  **Lexing (`lexer.c`)**: The source code is broken down into small pieces called **Tokens** (e.g., `var`, `identifier`, `+`, `number`).
-2.  **Parsing (`parser.c`)**: Tokens are organized into a tree structure called an **Abstract Syntax Tree (AST)**. This defines the hierarchy and rules of your code.
-3.  **Evaluating (`eval.c`)**: The interpreter "walks" through the tree, executing each node's logic step-by-step using an **Environment (`env.c`)** to store variables.
+Core pipeline stages:
+- **Lexing (`lexer.c`)**: turns source into tokens.
+- **Parsing (`parser.c`)**: builds the AST.
+- **Evaluating (`eval.c`)**: executes the AST using an environment (`env.c`).
 
 ### Bytecode VM Status
-The VM is the default runtime, but it is intentionally limited for now. For full language support, use the interpreter via `--interp`.
+The VM is the default runtime and supports the features exercised in `examples/program.espr`.
+
+---
+
+## Testing
+
+### Run All Tests
+```bash
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build
+```
+
+### Targeted Test Scripts
+All scripts live in `tests/` and accept the binary path and one or more program files.
+
+```bash
+# Interpreter and VM suites
+tests/run_interp_suite.sh ./build/ESPresso examples/program.espr
+tests/run_vm_suite.sh ./build/ESPresso examples/program.espr
+
+# Parse error smoke tests (should not crash)
+tests/run_parse_errors.sh ./build/ESPresso \
+  examples/parse_errors/unclosed_string.espr \
+  examples/parse_errors/missing_brace.espr \
+  examples/parse_errors/bad_for.espr
+
+# Trace + disasm output validation
+tests/run_trace_disasm.sh ./build/ESPresso examples/program.espr
+
+# Sanitizers / leak checks
+tests/run_asan.sh ./build/ESPresso examples/program.espr
+tests/run_valgrind.sh ./build/ESPresso examples/program.espr
+tests/run_leaks.sh ./build/ESPresso examples/program.espr
+```
+
+### Benchmark (Interpreter vs VM)
+To compare interpreter and VM performance, run:
+
+```bash
+tests/run_bench.sh ./build/ESPresso examples/bench.espr
+```
+
+To change the number of runs (default is 20), pass a third argument:
+
+```bash
+tests/run_bench.sh ./build/ESPresso examples/bench.espr 100
+```
+
+This runs the same program in both modes and prints timing results and speedup.
+
+You can also benchmark directly with the binary:
+
+```bash
+./build/ESPresso --bench --runs 100 examples/bench.espr
+```
 
 ---
 
@@ -162,6 +209,26 @@ The VM is the default runtime, but it is intentionally limited for now. For full
 - `src/main.c`: The entry point that ties everything together.
 
 ---
+
+## Status
+
+Current:
+- VM is the default runtime and passes the full `examples/program.espr` suite.
+- Interpreter and VM both have line/column error reporting with readable traces.
+- ASan and leaks tests pass in CI-style runs.
+
+Next:
+- Tighten parse-error tests to assert specific error messages and positions.
+- Expand benchmarks to cover closures, arrays, and range-heavy workloads.
+- Add a small standard library surface (core helpers like `len`, `typeOf`, `clockMs`).
+
+Phase Status (Condensed):
+- [x] Phase 0 — Stabilize Core
+- [~] Phase 1 — VM Parity (in progress)
+- [ ] Phase 2 — Reliability/Determinism
+- [ ] Phase 3 — ESP‑32 Integration
+- [ ] Phase 4 — Language Ergonomics
+- [ ] Phase 5 — Ecosystem and Adoption
 
 ## Contributing
 ESPresso is under active development. Feel free to explore the code and suggest improvements!

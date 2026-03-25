@@ -14,6 +14,7 @@ typedef struct {
 
 void initParser(Parser* parser, Lexer* lexer);
 void advance(Parser* parser);
+void freeParser(Parser* parser);
 
 ASTNode* makeNode(NodeType type);
 ASTNode* makeUnknownNode(Parser* parser);

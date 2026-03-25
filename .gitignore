@@ -3,6 +3,7 @@ ESPresso
 
 # Build directories
 build/
+build-*/
 cmake-build-debug/
 CMakeFiles/
 CMakeCache.txt
@@ -23,3 +24,6 @@ Makefile
 .vscode/
 *.swp
 *.swo
+
+# Local planning docs
+ROADMAP.md

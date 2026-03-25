@@ -16,5 +16,7 @@ typedef enum {
 
 InterpretResult interpret(Chunk* chunk, Env* globals);
 void vmSetTrace(int enabled);
+void vmFree(void);
+void vmSetSource(const char* source, const char* path);
 
 #endif // ESPRESSO_VM_H
